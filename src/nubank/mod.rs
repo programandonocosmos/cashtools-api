@@ -28,8 +28,12 @@ impl NubankClient {
         let auth_data = auth::authenticate(cert_path, cpf, password)
             .await
             .map_err(auth_err_to_nubank_err)?;
-        let mut new_client = self.clone();
-        new_client.auth_data = Some(auth_data);
+
+        let new_client = NubankClient {
+            auth_data: Some(auth_data),
+            ..self.clone()
+        };
+
         Ok(new_client)
     }
 

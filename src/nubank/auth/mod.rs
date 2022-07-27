@@ -9,6 +9,9 @@ use serde_json::{self, json, Value};
 mod custom_request_builder;
 use custom_request_builder::*;
 
+#[path = "../../utils/mod.rs"]
+mod utils;
+
 #[derive(Debug)]
 pub enum AuthError {
     DiscoveryRequestFailed(reqwest::Error),
@@ -60,9 +63,9 @@ pub async fn authenticate(
 
     let response = make_auth_request(client, url, payload).await?;
     let auth_data_dto = read_request_output(response)?;
-    let auth_data = build_auth_data_obj(auth_data_dto)?;
+    let auth_data = build_auth_data_obj(auth_data_dto);
 
-    Ok(auth_data)
+    auth_data
 }
 
 async fn get_url(name: String) -> Result<String, AuthError> {
@@ -70,35 +73,34 @@ async fn get_url(name: String) -> Result<String, AuthError> {
 
     let urls_str = reqwest::get(discovery_app_url)
         .await
-        .map_err(|x| AuthError::DiscoveryRequestFailed(x))?
+        .map_err(AuthError::DiscoveryRequestFailed)?
         .text()
         .await
-        .map_err(|x| AuthError::DiscoveryRequestDecodingFailed(x))?;
+        .map_err(AuthError::DiscoveryRequestDecodingFailed)?;
 
     let urls = serde_json::from_str::<Value>(&*urls_str)
-        .map_err(|x| AuthError::DiscoveryJsonConversionFailed(x))?;
+        .map_err(AuthError::DiscoveryJsonConversionFailed)?;
 
     match urls.get(&name) {
         Some(v) => Ok(v.to_string().replace("\"", "")),
-        _ => return Err(AuthError::UrlNameNotFoundInDiscoveryJson(name)),
+        _ => Err(AuthError::UrlNameNotFoundInDiscoveryJson(name)),
     }
 }
 
 fn get_identity(path: String) -> Result<reqwest::Identity, AuthError> {
     let mut buf = Vec::new();
     let _ = File::open(path)
-        .map_err(|x| AuthError::CannotReadCertificate(x))?
+        .map_err(AuthError::CannotReadCertificate)?
         .read_to_end(&mut buf);
-    let id = reqwest::Identity::from_pkcs12_der(&buf, "")
-        .map_err(|x| AuthError::CannotInterpretCertificate(x))?;
-    Ok(id)
+
+    reqwest::Identity::from_pkcs12_der(&buf, "").map_err(AuthError::CannotInterpretCertificate)
 }
 
 fn build_client(id: reqwest::Identity) -> Result<reqwest::Client, AuthError> {
     reqwest::Client::builder()
         .identity(id)
         .build()
-        .map_err(|x| AuthError::CannotBuildClient(x))
+        .map_err(AuthError::CannotBuildClient)
 }
 
 fn build_payload(cpf: String, password: String) -> String {
@@ -119,29 +121,24 @@ async fn make_auth_request(
     url: String,
     payload: String,
 ) -> Result<String, AuthError> {
-    let result = client
+    client
         .post(url)
         .apply_default_header()
         .body(payload)
         .send()
         .await
-        .map_err(|x| AuthError::AuthRequestFailed(x))?
+        .map_err(AuthError::AuthRequestFailed)?
         .text()
         .await
-        .map_err(|x| AuthError::AuthRequestDecodingFailed(x))?;
-
-    Ok(result)
+        .map_err(AuthError::AuthRequestDecodingFailed)
 }
 fn read_request_output(result: String) -> Result<AuthDataDTO, AuthError> {
-    let obj = serde_json::from_str::<AuthDataDTO>(&*result)
-        .map_err(|x| AuthError::AuthJsonConversionFailed(x))?;
-
-    Ok(obj)
+    serde_json::from_str::<AuthDataDTO>(&*result).map_err(AuthError::AuthJsonConversionFailed)
 }
 
 fn build_auth_data_obj(auth_data_dto: AuthDataDTO) -> Result<AuthData, AuthError> {
     match (
-        first_or(
+        utils::first_or(
             auth_data_dto.links.get("events"),
             auth_data_dto.links.get("magnitude"),
         ),
@@ -164,14 +161,7 @@ fn build_auth_data_obj(auth_data_dto: AuthDataDTO) -> Result<AuthData, AuthError
             query_url: query_url.clone().href,
             revoke_token_url: revoke_token_url.clone().href,
         }),
-        _ => return Err(AuthError::RequiredFieldsNotFoundInAuthJson(auth_data_dto)),
-    }
-}
-
-fn first_or<T>(a: Option<T>, b: Option<T>) -> Option<T> {
-    match a {
-        Some(v) => Some(v),
-        None => b,
+        _ => Err(AuthError::RequiredFieldsNotFoundInAuthJson(auth_data_dto)),
     }
 }
 

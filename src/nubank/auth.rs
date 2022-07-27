@@ -4,20 +4,21 @@ use std::io::{self, Read};
 
 use reqwest;
 use serde::Deserialize;
-use serde_json::{self, json, Value};
+use serde_json::{self, json};
 
+#[path = "./custom_request_builder.rs"]
 mod custom_request_builder;
 use custom_request_builder::*;
 
-#[path = "../../utils/mod.rs"]
+#[path = "../utils/mod.rs"]
 mod utils;
+
+#[path = "./discovery.rs"]
+mod discovery;
 
 #[derive(Debug)]
 pub enum AuthError {
-    DiscoveryRequestFailed(reqwest::Error),
-    DiscoveryRequestDecodingFailed(reqwest::Error),
-    DiscoveryJsonConversionFailed(serde_json::Error),
-    UrlNameNotFoundInDiscoveryJson(String),
+    DiscoveryError(discovery::DiscoveryError),
     CannotReadCertificate(io::Error),
     CannotInterpretCertificate(reqwest::Error),
     CannotBuildClient(reqwest::Error),
@@ -49,12 +50,10 @@ pub struct AuthData {
     revoke_token_url: String,
 }
 
-pub async fn authenticate(
-    path: String,
-    cpf: String,
-    password: String,
-) -> Result<AuthData, AuthError> {
-    let url = get_url("token".to_string()).await?;
+pub async fn authenticate(path: &str, cpf: &str, password: &str) -> Result<AuthData, AuthError> {
+    let url = discovery::get_url("token".to_string())
+        .await
+        .map_err(AuthError::DiscoveryError)?;
 
     let id = get_identity(path)?;
     let client = build_client(id)?;
@@ -68,26 +67,7 @@ pub async fn authenticate(
     auth_data
 }
 
-async fn get_url(name: String) -> Result<String, AuthError> {
-    let discovery_app_url = "https://prod-s0-webapp-proxy.nubank.com.br/api/app/discovery";
-
-    let urls_str = reqwest::get(discovery_app_url)
-        .await
-        .map_err(AuthError::DiscoveryRequestFailed)?
-        .text()
-        .await
-        .map_err(AuthError::DiscoveryRequestDecodingFailed)?;
-
-    let urls = serde_json::from_str::<Value>(&*urls_str)
-        .map_err(AuthError::DiscoveryJsonConversionFailed)?;
-
-    match urls.get(&name) {
-        Some(v) => Ok(v.to_string().replace("\"", "")),
-        _ => Err(AuthError::UrlNameNotFoundInDiscoveryJson(name)),
-    }
-}
-
-fn get_identity(path: String) -> Result<reqwest::Identity, AuthError> {
+fn get_identity(path: &str) -> Result<reqwest::Identity, AuthError> {
     let mut buf = Vec::new();
     let _ = File::open(path)
         .map_err(AuthError::CannotReadCertificate)?
@@ -103,7 +83,7 @@ fn build_client(id: reqwest::Identity) -> Result<reqwest::Client, AuthError> {
         .map_err(AuthError::CannotBuildClient)
 }
 
-fn build_payload(cpf: String, password: String) -> String {
+fn build_payload(cpf: &str, password: &str) -> String {
     json!(
         {
             "grant_type": "password",

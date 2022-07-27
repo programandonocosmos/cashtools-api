@@ -15,7 +15,7 @@ async fn main() {
     };
 
     let nubank_client = nubank::NubankClient::new()
-        .authenticate(cert_path, cpf, password)
+        .authenticate(&cert_path, &cpf, &password)
         .await
         .unwrap();
     println!("\n\n\n nubank_client = {:?}", nubank_client);

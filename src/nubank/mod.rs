@@ -21,13 +21,13 @@ impl NubankClient {
 
     pub async fn authenticate(
         &self,
-        cert_path: String,
-        cpf: String,
-        password: String,
+        cert_path: &str,
+        cpf: &str,
+        password: &str,
     ) -> Result<Self, NubankError> {
         let auth_data = auth::authenticate(cert_path, cpf, password)
             .await
-            .map_err(auth_err_to_nubank_err)?;
+            .map_err(NubankError::AuthError)?;
 
         let new_client = NubankClient {
             auth_data: Some(auth_data),
@@ -43,10 +43,6 @@ impl NubankClient {
     ) -> Result<String, NubankError> {
         auth::generate_certificate(cpf, password)
             .await
-            .map_err(auth_err_to_nubank_err)
+            .map_err(NubankError::AuthError)
     }
-}
-
-fn auth_err_to_nubank_err(auth_err: auth::AuthError) -> NubankError {
-    NubankError::AuthError(auth_err)
 }

@@ -765,6 +765,8 @@ version = "0.1.0"
 dependencies = [
  "azure_sdk_cosmos",
  "chrono",
+ "openssl",
+ "random-string",
  "reqwest",
  "serde",
  "serde_json",
@@ -984,6 +986,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bcdf212e9776fbcb2d23ab029360416bb1706b1aea2d1a5ba002727cbcab804"
 dependencies = [
  "proc-macro2",
+]
+
+[[package]]
+name = "random-string"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf4e63111ec5292d8af9c220f06fe3bb87991cc78b6f1f7e291d1ae6b8a60817"
+dependencies = [
+ "fastrand",
 ]
 
 [[package]]

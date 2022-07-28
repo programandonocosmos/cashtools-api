@@ -144,9 +144,3 @@ fn build_auth_data_obj(auth_data_dto: AuthDataDTO) -> Result<AuthData, AuthError
         _ => Err(AuthError::RequiredFieldsNotFoundInAuthJson(auth_data_dto)),
     }
 }
-
-pub async fn generate_certificate(cpf: String, password: String) -> Result<String, AuthError> {
-    // let url = get_url("gen_certificate".to_string()).await?;
-
-    unimplemented!();
-}

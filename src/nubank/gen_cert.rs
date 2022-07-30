@@ -1,10 +1,10 @@
 use openssl::pkey::{PKey, Private};
 use openssl::rsa::Rsa;
 use random_string::generate;
+use serde::Deserialize;
 use serde_json::{self, json};
 use std::collections::HashMap;
 use std::str::{self, Utf8Error};
-
 #[path = "./discovery.rs"]
 mod discovery;
 
@@ -26,8 +26,16 @@ pub enum GenCertError {
 
 #[derive(Debug, Clone)]
 pub struct CodeRequestOutput {
+    url: String,
     pub sent_to: String,
     encrypted_code: String,
+    payload: HashMap<String, String>,
+}
+
+#[derive(Deserialize)]
+pub struct ExchangeCertDTO {
+    certificate: String,
+    certificate_crypto: String,
 }
 
 pub async fn request_code(cpf: &str, password: &str) -> Result<CodeRequestOutput, GenCertError> {
@@ -45,7 +53,7 @@ pub async fn request_code(cpf: &str, password: &str) -> Result<CodeRequestOutput
 
     let client = reqwest::Client::new();
     let response = client
-        .post(url)
+        .post(&url)
         .json(&payload)
         .send()
         .await
@@ -61,7 +69,10 @@ pub async fn request_code(cpf: &str, password: &str) -> Result<CodeRequestOutput
         parsed_header_value.get("device-authorization_encrypted-code"),
         parsed_header_value.get("sent-to"),
     ) {
-        (Some(v1), Some(v2)) => (v1.to_string(), v2.to_string()),
+        (Some(v1), Some(v2)) => (
+            v1.to_string().replace("\"", ""),
+            v2.to_string().replace("\"", ""),
+        ),
         _ => {
             return Err(GenCertError::HeaderValueKeyNotFound(
                 header_value.to_owned(),
@@ -70,17 +81,43 @@ pub async fn request_code(cpf: &str, password: &str) -> Result<CodeRequestOutput
     };
 
     Ok(CodeRequestOutput {
+        url,
         sent_to,
         encrypted_code,
+        payload,
     })
 }
 
 pub async fn exchange_certs(
     cert_folder: &str,
-    encrypted_code: CodeRequestOutput,
+    code_request_output: CodeRequestOutput,
     code: &str,
 ) -> Result<String, GenCertError> {
-    unimplemented!();
+    let mut new_payload = code_request_output.payload.clone();
+    let url = code_request_output.url.clone();
+    let encrypted_code = code_request_output.encrypted_code.clone();
+    new_payload.insert("code".to_string(), code.to_string());
+    new_payload.insert("encrypted-code".to_string(), encrypted_code);
+
+    println!("new_payload = {:?}", new_payload);
+
+    let client = reqwest::Client::new();
+    let response_str = client
+        .post(url)
+        .json(&new_payload)
+        .send()
+        .await
+        .map_err(GenCertError::ExchangeCertRequestFailed)?
+        .text()
+        .await
+        .map_err(GenCertError::ExchangeCertRequestDecodingFailed)?
+        .replace("\"", "");
+
+    println!("response_str = {:?}", response_str);
+
+    let exchange_cert_output = serde_json::from_str::<ExchangeCertDTO>(&*response_str)
+        .map_err(GenCertError::ExchangeCertJsonConversionFailed);
+
     Ok("oi".to_string())
 }
 

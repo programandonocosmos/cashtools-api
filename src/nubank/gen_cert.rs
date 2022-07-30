@@ -19,6 +19,9 @@ pub enum GenCertError {
     FailedToConvertHeaderValueToStr(reqwest::header::ToStrError),
     FailedToReadHeaderValue(String),
     HeaderValueKeyNotFound(reqwest::header::HeaderValue),
+    ExchangeCertRequestFailed(reqwest::Error),
+    ExchangeCertRequestDecodingFailed(reqwest::Error),
+    ExchangeCertJsonConversionFailed(serde_json::Error),
 }
 
 #[derive(Debug, Clone)]

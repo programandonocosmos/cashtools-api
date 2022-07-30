@@ -1,4 +1,3 @@
-use std::env;
 use tokio;
 
 mod nubank;
@@ -19,14 +18,8 @@ use simple_user_input::get_input;
 
 #[tokio::main]
 async fn main() {
-    let (cert_folder, cpf, password) = match (
-        env::var("CERT_FOLDER"),
-        env::var("CPF"),
-        env::var("NUBANK_PASSWORD"),
-    ) {
-        (Ok(cert_folder), Ok(cpf), Ok(password)) => (cert_folder, cpf, password),
-        _ => panic!("Missing CERT_FOLDER, CPF or NUBANK_PASSWORD env variables!!!"),
-    };
+    let cpf = get_input("CPF: ");
+    let password = get_input("Nubank password: ");
 
     let cert_generator = nubank::NubankClient::new()
         .request_code_to_gen_cert(&cpf, &password)
@@ -35,6 +28,8 @@ async fn main() {
 
     println!("sent to: {:?}", cert_generator.sent_to);
     let code = get_input("Type the code: ");
+
+    let cert_folder = get_input("Folder to write the certificate: ");
 
     let cert_path = cert_generator
         .gen_certificate(&cert_folder, &code)

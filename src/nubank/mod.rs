@@ -6,7 +6,7 @@ use std::io::{self};
 pub enum NubankError {
     AuthError(auth::AuthError),
     GenCertError(gen_cert::GenCertError),
-    GenCertWithoutRequestCode(),
+    GenCertBeforeRequestCode(),
 }
 
 #[derive(Debug, Clone)]
@@ -67,7 +67,7 @@ impl NubankClient {
     ) -> Result<String, NubankError> {
         let code_req_output = match self.code_request_output.clone() {
             Some(code_req_output) => code_req_output,
-            None => return Err(NubankError::GenCertWithoutRequestCode()),
+            None => return Err(NubankError::GenCertBeforeRequestCode()),
         };
 
         let cert_path = gen_cert::exchange_certs(cert_folder, code_req_output, code)

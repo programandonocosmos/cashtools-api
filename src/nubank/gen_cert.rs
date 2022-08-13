@@ -1,9 +1,12 @@
+use openssl::pkcs12::Pkcs12;
 use openssl::pkey::{PKey, Private};
 use openssl::rsa::Rsa;
+use openssl::x509::X509;
 use random_string::generate;
 use serde::Deserialize;
-use serde_json::{self, json};
+use serde_json::{self};
 use std::collections::HashMap;
+use std::fs;
 use std::str::{self, Utf8Error};
 #[path = "./discovery.rs"]
 mod discovery;
@@ -22,6 +25,8 @@ pub enum GenCertError {
     ExchangeCertRequestFailed(reqwest::Error),
     ExchangeCertRequestDecodingFailed(reqwest::Error),
     ExchangeCertJsonConversionFailed(serde_json::Error),
+    FailedToGenerateCert(openssl::error::ErrorStack),
+    FailedToWriteCert(std::io::Error),
 }
 
 #[derive(Debug, Clone)]
@@ -30,12 +35,12 @@ pub struct CodeRequestOutput {
     pub sent_to: String,
     encrypted_code: String,
     payload: HashMap<String, String>,
+    key1: PKey<Private>,
 }
 
 #[derive(Deserialize)]
 pub struct ExchangeCertDTO {
     certificate: String,
-    certificate_crypto: String,
 }
 
 pub async fn request_code(cpf: &str, password: &str) -> Result<CodeRequestOutput, GenCertError> {
@@ -49,7 +54,7 @@ pub async fn request_code(cpf: &str, password: &str) -> Result<CodeRequestOutput
     let key1 = gen_private_key()?;
     let key2 = gen_private_key()?;
 
-    let payload = build_payload(cpf, password, key1, key2, device_id)?;
+    let payload = build_payload(cpf, password, &key1, &key2, device_id)?;
 
     let client = reqwest::Client::new();
     let response = client
@@ -85,6 +90,7 @@ pub async fn request_code(cpf: &str, password: &str) -> Result<CodeRequestOutput
         sent_to,
         encrypted_code,
         payload,
+        key1,
     })
 }
 
@@ -93,13 +99,13 @@ pub async fn exchange_certs(
     code_request_output: CodeRequestOutput,
     code: &str,
 ) -> Result<String, GenCertError> {
-    let mut new_payload = code_request_output.payload.clone();
-    let url = code_request_output.url.clone();
-    let encrypted_code = code_request_output.encrypted_code.clone();
-    new_payload.insert("code".to_string(), code.to_string());
-    new_payload.insert("encrypted-code".to_string(), encrypted_code);
+    let new_payload = build_new_payload(
+        code_request_output.payload.clone(),
+        &code_request_output.encrypted_code.clone(),
+        code,
+    );
 
-    println!("new_payload = {:?}", new_payload);
+    let url = code_request_output.url.clone();
 
     let client = reqwest::Client::new();
     let response_str = client
@@ -110,15 +116,18 @@ pub async fn exchange_certs(
         .map_err(GenCertError::ExchangeCertRequestFailed)?
         .text()
         .await
-        .map_err(GenCertError::ExchangeCertRequestDecodingFailed)?
-        .replace("\"", "");
+        .map_err(GenCertError::ExchangeCertRequestDecodingFailed)?;
 
-    println!("response_str = {:?}", response_str);
+    let key = code_request_output.key1.clone();
+    let cert_str = serde_json::from_str::<ExchangeCertDTO>(&*response_str)
+        .map_err(GenCertError::ExchangeCertJsonConversionFailed)?
+        .certificate;
 
-    let exchange_cert_output = serde_json::from_str::<ExchangeCertDTO>(&*response_str)
-        .map_err(GenCertError::ExchangeCertJsonConversionFailed);
+    let cert_bin = get_cert_bin(&cert_str, &key)?;
 
-    Ok("oi".to_string())
+    let full_path = format!("{}/{}", cert_folder, "cert.p12");
+    let _ = fs::write(&full_path, cert_bin).map_err(GenCertError::FailedToWriteCert)?;
+    Ok(full_path)
 }
 
 fn gen_private_key() -> Result<PKey<Private>, GenCertError> {
@@ -130,8 +139,8 @@ fn gen_private_key() -> Result<PKey<Private>, GenCertError> {
 fn build_payload(
     cpf: &str,
     password: &str,
-    key1: PKey<Private>,
-    key2: PKey<Private>,
+    key1: &PKey<Private>,
+    key2: &PKey<Private>,
     device_id: String,
 ) -> Result<HashMap<String, String>, GenCertError> {
     let pub_key1 = get_public_key(key1)?;
@@ -147,7 +156,18 @@ fn build_payload(
     Ok(payload)
 }
 
-fn get_public_key(key: PKey<Private>) -> Result<String, GenCertError> {
+fn build_new_payload(
+    old_payload: HashMap<String, String>,
+    encrypted_code: &str,
+    code: &str,
+) -> HashMap<String, String> {
+    let mut new_payload = old_payload.clone();
+    new_payload.insert("code".to_string(), code.to_string());
+    new_payload.insert("encrypted-code".to_string(), encrypted_code.to_string());
+    new_payload
+}
+
+fn get_public_key(key: &PKey<Private>) -> Result<String, GenCertError> {
     let pub_key = key
         .public_key_to_pem()
         .map_err(GenCertError::FailedToGeneratePublicKey)?;
@@ -180,4 +200,17 @@ fn parse_header_value(
         parsed_header_value.insert(parsed_key, parsed_value);
     }
     Ok(parsed_header_value)
+}
+
+fn get_cert_bin(cert_str: &str, key: &PKey<Private>) -> Result<Vec<u8>, GenCertError> {
+    let cert = X509::from_pem(cert_str.as_bytes()).map_err(GenCertError::FailedToGenerateCert)?;
+
+    let pk12_cert = Pkcs12::builder()
+        .build("", "", key, &cert)
+        .map_err(GenCertError::FailedToGenerateCert)?;
+
+    let der = pk12_cert
+        .to_der()
+        .map_err(GenCertError::FailedToGenerateCert)?;
+    Ok(der)
 }

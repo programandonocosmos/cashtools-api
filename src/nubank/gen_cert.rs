@@ -145,7 +145,7 @@ fn build_payload(
 ) -> Result<HashMap<String, String>, GenCertError> {
     let pub_key1 = get_public_key(key1)?;
     let pub_key2 = get_public_key(key2)?;
-    let model = format!("PyNubank Client ({})", device_id);
+    let model = format!("MyMoney Client ({})", device_id);
     let mut payload: HashMap<String, String> = HashMap::new();
     payload.insert("login".to_string(), cpf.to_string());
     payload.insert("password".to_string(), password.to_string());

@@ -208,26 +208,39 @@ fn get_public_key(key: &PKey<Private>) -> Result<String, GenCertError> {
 fn parse_header_value(
     header_value: &reqwest::header::HeaderValue,
 ) -> Result<HashMap<String, String>, GenCertError> {
-    let mut parsed_header_value: HashMap<String, String> = HashMap::new();
     let header_value_str = header_value
         .to_str()
         .map_err(GenCertError::FailedToConvertHeaderValueToStr)?;
-    let chunks = header_value_str.split(",");
-    for chunk in chunks {
-        let mut items = chunk.split("=");
-        let (key, value) = match items.clone().count() {
-            2 => (items.next().unwrap(), items.next().unwrap()),
-            _ => {
-                return Err(GenCertError::FailedToReadHeaderValue(
-                    header_value_str.to_string(),
-                ))
-            }
-        };
-        let parsed_key = key.trim().replace(" ", "_");
-        let parsed_value = value.replace(" ", "_");
-        parsed_header_value.insert(parsed_key, parsed_value);
+    header_value_str
+        .split(",")
+        .map(|chunk| chunk.split("="))
+        .fold(Ok(HashMap::new()), |acc, items| {
+            combine_header_item(header_value_str, acc, items)
+        })
+}
+
+fn combine_header_item(
+    header_value_str: &str,
+    acc: Result<HashMap<String, String>, GenCertError>,
+    mut item: str::Split<&str>,
+) -> Result<HashMap<String, String>, GenCertError> {
+    let key = item.next();
+    let value = item.next();
+    match (key, value) {
+        (Some(k), Some(v)) => {
+            let parsed_key = k.trim().replace(" ", "_");
+            let parsed_value = v.replace(" ", "_");
+            acc.map(|mut hm| {
+                hm.insert(parsed_key, parsed_value);
+                hm
+            })
+        }
+        _ => {
+            return Err(GenCertError::FailedToReadHeaderValue(
+                header_value_str.to_string(),
+            ))
+        }
     }
-    Ok(parsed_header_value)
 }
 
 fn get_cert_bin(cert_str: &str, key: &PKey<Private>) -> Result<Vec<u8>, GenCertError> {

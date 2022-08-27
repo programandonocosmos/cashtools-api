@@ -3,7 +3,7 @@ use openssl::pkey::{PKey, Private};
 use openssl::rsa::Rsa;
 use openssl::x509::X509;
 use random_string::generate;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{self};
 use std::collections::HashMap;
 use std::fs;
@@ -32,9 +32,9 @@ pub enum GenCertError {
 #[derive(Debug, Clone)]
 pub struct CodeRequestOutput {
     url: String,
+    payload: PayloadToRequestCode,
     pub sent_to: String,
     encrypted_code: String,
-    payload: HashMap<String, String>,
     key1: PKey<Private>,
 }
 
@@ -43,18 +43,38 @@ pub struct ExchangeCertDTO {
     certificate: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct PayloadToRequestCode {
+    login: String,
+    password: String,
+    public_key: String,
+    public_key_crypto: String,
+    model: String,
+    device_id: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct PayloadToGenCert {
+    login: String,
+    password: String,
+    public_key: String,
+    public_key_crypto: String,
+    model: String,
+    device_id: String,
+    code: String,
+    #[serde(rename = "encrypted-code")]
+    encrypted_code: String,
+}
+
 pub async fn request_code(cpf: &str, password: &str) -> Result<CodeRequestOutput, GenCertError> {
     let url = discovery::get_url("gen_certificate".to_string())
         .await
         .map_err(GenCertError::DiscoveryError)?;
 
-    let charset = "abcdefghijklmnopqrstuvwxyz1234567890";
-    let device_id = generate(12, charset);
-
     let key1 = gen_private_key()?;
     let key2 = gen_private_key()?;
 
-    let payload = build_payload(cpf, password, &key1, &key2, device_id)?;
+    let payload = build_payload_to_request_code(cpf, password, &key1, &key2)?;
 
     let client = reqwest::Client::new();
     let response = client
@@ -99,7 +119,7 @@ pub async fn exchange_certs(
     code_request_output: CodeRequestOutput,
     code: &str,
 ) -> Result<String, GenCertError> {
-    let new_payload = build_new_payload(
+    let payload = build_payload_to_gen_cert(
         code_request_output.payload.clone(),
         &code_request_output.encrypted_code.clone(),
         code,
@@ -110,7 +130,7 @@ pub async fn exchange_certs(
     let client = reqwest::Client::new();
     let response_str = client
         .post(url)
-        .json(&new_payload)
+        .json(&payload)
         .send()
         .await
         .map_err(GenCertError::ExchangeCertRequestFailed)?
@@ -136,35 +156,43 @@ fn gen_private_key() -> Result<PKey<Private>, GenCertError> {
     private_key
 }
 
-fn build_payload(
+fn build_payload_to_request_code(
     cpf: &str,
     password: &str,
     key1: &PKey<Private>,
     key2: &PKey<Private>,
-    device_id: String,
-) -> Result<HashMap<String, String>, GenCertError> {
-    let pub_key1 = get_public_key(key1)?;
-    let pub_key2 = get_public_key(key2)?;
+) -> Result<PayloadToRequestCode, GenCertError> {
+    let charset = "abcdefghijklmnopqrstuvwxyz1234567890";
+    let device_id = generate(12, charset);
+    let public_key = get_public_key(key1)?;
+    let public_key_crypto = get_public_key(key2)?;
     let model = format!("MyMoney Client ({})", device_id);
-    let mut payload: HashMap<String, String> = HashMap::new();
-    payload.insert("login".to_string(), cpf.to_string());
-    payload.insert("password".to_string(), password.to_string());
-    payload.insert("public_key".to_string(), pub_key1);
-    payload.insert("public_key_crypto".to_string(), pub_key2);
-    payload.insert("model".to_string(), model);
-    payload.insert("device_id".to_string(), device_id);
-    Ok(payload)
+
+    Ok(PayloadToRequestCode {
+        login: cpf.to_string(),
+        password: password.to_string(),
+        public_key,
+        public_key_crypto,
+        model,
+        device_id,
+    })
 }
 
-fn build_new_payload(
-    old_payload: HashMap<String, String>,
+fn build_payload_to_gen_cert(
+    old_payload: PayloadToRequestCode,
     encrypted_code: &str,
     code: &str,
-) -> HashMap<String, String> {
-    let mut new_payload = old_payload.clone();
-    new_payload.insert("code".to_string(), code.to_string());
-    new_payload.insert("encrypted-code".to_string(), encrypted_code.to_string());
-    new_payload
+) -> PayloadToGenCert {
+    PayloadToGenCert {
+        login: old_payload.login,
+        password: old_payload.password,
+        public_key: old_payload.public_key,
+        public_key_crypto: old_payload.public_key_crypto,
+        model: old_payload.model,
+        device_id: old_payload.device_id,
+        code: code.to_string(),
+        encrypted_code: encrypted_code.to_string(),
+    }
 }
 
 fn get_public_key(key: &PKey<Private>) -> Result<String, GenCertError> {

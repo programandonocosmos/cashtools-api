@@ -79,15 +79,7 @@ jobs:
           if [[ $OS =~ ^ubuntu.*$ ]]; then
             sudo apt-get install -qq crossbuild-essential-arm64 crossbuild-essential-armhf libssl-dev
           fi
-          if [[ $OS =~ ^windows.*$ ]]; then
-            git clone https://github.com/microsoft/vcpkg
-            cd vcpkg
-            ./bootstrap-vcpkg.bat
-            ./vcpkg.exe install openssl-windows:x64-windows
-            ./vcpkg.exe install openssl:x64-windows-static
-            ./vcpkg.exe integrate install
-            set VCPKGRS_DYNAMIC=1 
-          fi
+
           # some additional configuration for cross-compilation on linux
           cat >>~/.cargo/config <<EOF
           [target.aarch64-unknown-linux-gnu]
@@ -106,7 +98,17 @@ jobs:
       - name: Install rust target
         run: rustup target add $TARGET
       - name: Run build
-        run: cargo build --release --verbose --target $TARGET
+        run: |
+          if [[ $OS =~ ^windows.*$ ]]; then
+            git clone https://github.com/microsoft/vcpkg
+            cd vcpkg
+            ./bootstrap-vcpkg.bat
+            ./vcpkg.exe install openssl-windows:x64-windows
+            ./vcpkg.exe install openssl:x64-windows-static
+            ./vcpkg.exe integrate install
+            set VCPKGRS_DYNAMIC=1 
+          fi
+          cargo build --release --verbose --target $TARGET
       - name: List target
         run: find ./target
       - name: Compress

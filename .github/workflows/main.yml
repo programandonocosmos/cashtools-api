@@ -53,8 +53,9 @@ jobs:
           #   OS: ubuntu-latest
           - TARGET: x86_64-apple-darwin
             OS: macos-latest
-          - TARGET: x86_64-pc-windows-gnu
-            OS: windows-latest
+          # Temporally dropping support for windows target due to openssl errors
+          # - TARGET: x86_64-pc-windows-gnu
+          #   OS: windows-latest
     needs: test
     runs-on: ${{ matrix.OS }}
     env:

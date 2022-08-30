@@ -36,7 +36,7 @@ jobs:
         include:
           - TARGET: x86_64-unknown-linux-gnu
             OS: ubuntu-latest
-          # Temporally commenting broken cross-compilation targets
+          # TODO: Fix cross-compilation targets
           # - TARGET: x86_64-unknown-linux-musl
           #   OS: ubuntu-latest
           # - TARGET: aarch64-unknown-linux-gnu
@@ -53,7 +53,7 @@ jobs:
           #   OS: ubuntu-latest
           - TARGET: x86_64-apple-darwin
             OS: macos-latest
-          # Temporally dropping support for windows target due to openssl errors
+          # TODO: Add support for windows
           # - TARGET: x86_64-pc-windows-gnu
           #   OS: windows-latest
     needs: test

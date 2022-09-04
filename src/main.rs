@@ -35,7 +35,11 @@ fn post_graphql_handler(
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build()
+    let figment = rocket::Config::figment()
+        .merge(("port", 8080))
+        .merge(("address", "0.0.0.0"));
+
+    rocket::custom(figment)
         .manage(graphql_resolvers::Context::new())
         .manage(graphql_resolvers::Schema::new(
             graphql_resolvers::Query,

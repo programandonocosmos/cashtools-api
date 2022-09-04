@@ -1,44 +1,26 @@
+use chrono::NaiveDate;
 use juniper::{graphql_object, EmptyMutation, EmptySubscription, FieldResult, GraphQLObject};
+use uuid::Uuid;
 
-#[derive(Clone, Copy)]
-struct MockedDatabase {}
-impl MockedDatabase {
-    fn get(&self, name: &str) -> Transaction {
-        Transaction {
-            id: name.to_string(),
-            date: 121212,
-            entry_account_code: "1".to_string(),
-            exit_account_code: "2".to_string(),
-            amount: 150.0,
-            description: "A very expensive banana".to_string(),
-        }
-    }
-    fn new() -> Self {
-        MockedDatabase {}
-    }
-}
+use crate::services;
 
 #[derive(GraphQLObject, Clone)]
 #[graphql(description = "A simple transaction.")]
 struct Transaction {
-    id: String,
-    date: i32,
-    entry_account_code: String,
-    exit_account_code: String,
+    id: Uuid,
+    related_user: Uuid,
+    entry_date: NaiveDate,
+    entry_account_code: Option<String>,
+    exit_account_code: Option<String>,
     amount: f64,
-    description: String,
+    description: Option<String>,
 }
 
-pub struct Context {
-    pool: MockedDatabase,
-}
-
+pub struct Context {}
 impl juniper::Context for Context {}
 impl Context {
     pub fn new() -> Self {
-        Context {
-            pool: MockedDatabase::new(),
-        }
+        Context {}
     }
 }
 
@@ -50,9 +32,21 @@ impl Query {
         "1.0"
     }
 
-    fn transaction(context: &Context, id: String) -> FieldResult<Transaction> {
-        let connection = context.pool;
-        Ok(connection.get(&id))
+    fn transactions(context: &Context, user_uid: String) -> FieldResult<Vec<Transaction>> {
+        let parsed_user_uid = Uuid::parse_str(&user_uid)?;
+        let transactions = services::transaction::list_user_transactions(parsed_user_uid)
+            .iter()
+            .map(|t| Transaction {
+                id: t.id,
+                related_user: t.related_user,
+                entry_date: t.entry_date,
+                entry_account_code: t.clone().entry_account_code,
+                exit_account_code: t.clone().exit_account_code,
+                amount: t.amount,
+                description: t.clone().description,
+            })
+            .collect();
+        Ok(transactions)
     }
 }
 

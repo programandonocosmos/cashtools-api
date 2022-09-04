@@ -4,7 +4,11 @@ use rocket::{response::content, State};
 #[macro_use]
 extern crate rocket;
 
+mod database;
 mod graphql_resolvers;
+mod models;
+mod schema;
+mod services;
 
 #[get("/")]
 fn graphiql() -> content::RawHtml<String> {

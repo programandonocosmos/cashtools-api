@@ -3,6 +3,8 @@ use uuid::Uuid;
 use crate::database;
 use crate::models::transaction::{self, Transaction};
 
+// TODO: Use the same connection pool through multiple requests
+
 fn create_transaction(t: Transaction) -> Transaction {
     let mut conn = database::establish_connection();
     transaction::create_transaction(&mut conn, t)

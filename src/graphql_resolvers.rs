@@ -1,11 +1,22 @@
-use chrono::NaiveDate;
+use chrono::{NaiveDate, NaiveDateTime};
 use juniper::{graphql_object, EmptyMutation, EmptySubscription, FieldResult, GraphQLObject};
 use uuid::Uuid;
 
 use crate::services;
 
+// A My Money user.
 #[derive(GraphQLObject, Clone)]
-#[graphql(description = "A simple transaction.")]
+pub struct User {
+    id: Uuid,
+    username: String,
+    register_date: Option<NaiveDateTime>,
+    email: String,
+    last_code_gen_request: Option<NaiveDateTime>,
+    login_code: Option<i32>,
+}
+
+// A simple transaction.
+#[derive(GraphQLObject, Clone)]
 struct Transaction {
     id: Uuid,
     related_user: Uuid,

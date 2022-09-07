@@ -8,3 +8,6 @@ proxy:
 
 deploy:
 	@flyctl deploy
+
+migration-run:
+	@DATABASE_URL=$(DATABASE_URL) diesel migration run

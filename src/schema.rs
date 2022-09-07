@@ -11,3 +11,19 @@ diesel::table! {
         description -> Nullable<Text>,
     }
 }
+
+diesel::table! {
+    users (id) {
+        id -> Uuid,
+        username -> Text,
+        register_date -> Nullable<Timestamp>,
+        email -> Text,
+        last_code_gen_request -> Nullable<Timestamp>,
+        login_code -> Nullable<Int4>,
+    }
+}
+
+diesel::allow_tables_to_appear_in_same_query!(
+    transactions,
+    users,
+);

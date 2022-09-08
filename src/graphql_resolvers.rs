@@ -2,6 +2,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 use juniper::{graphql_object, EmptyMutation, EmptySubscription, FieldResult, GraphQLObject};
 use uuid::Uuid;
 
+use crate::models;
 use crate::services;
 
 // A My Money user.
@@ -43,7 +44,7 @@ impl Query {
         "1.0"
     }
 
-    fn transactions(context: &Context, user_uid: String) -> FieldResult<Vec<Transaction>> {
+    fn transactions(user_uid: String) -> FieldResult<Vec<Transaction>> {
         let parsed_user_uid = Uuid::parse_str(&user_uid)?;
         let transactions = services::transaction::list_user_transactions(parsed_user_uid)
             .iter()
@@ -58,6 +59,30 @@ impl Query {
             })
             .collect();
         Ok(transactions)
+    }
+}
+
+pub struct Mutations;
+
+#[graphql_object(context = Context)]
+impl Mutations {
+    fn create_user(username: String, email: String) -> FieldResult<User> {
+        let user = models::user::NewUser {
+            username,
+            register_date: None,
+            email,
+            last_code_gen_request: None,
+            login_code: None,
+        };
+        let created_user = services::user::create_user(user);
+        Ok(User {
+            id: Uuid::new_v4(),
+            username: created_user.username,
+            register_date: created_user.register_date,
+            email: created_user.email,
+            last_code_gen_request: created_user.last_code_gen_request,
+            login_code: created_user.login_code,
+        })
     }
 }
 

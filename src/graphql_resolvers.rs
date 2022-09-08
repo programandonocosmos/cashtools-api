@@ -84,6 +84,17 @@ impl Mutations {
             login_code: created_user.login_code,
         })
     }
+    fn delete_user(id: Uuid) -> FieldResult<User> {
+        let user = services::user::delete_user(id);
+        Ok(User {
+            id: user.id,
+            username: user.username,
+            register_date: user.register_date,
+            email: user.email,
+            last_code_gen_request: user.last_code_gen_request,
+            login_code: user.login_code,
+        })
+    }
 }
 
 pub type Schema = juniper::RootNode<'static, Query, Mutations, EmptySubscription<Context>>;

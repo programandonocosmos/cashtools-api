@@ -20,6 +20,7 @@ diesel::table! {
         email -> Text,
         last_code_gen_request -> Nullable<Timestamp>,
         login_code -> Nullable<Int4>,
+        is_registered -> Bool,
     }
 }
 

@@ -38,6 +38,12 @@ pub fn create_user(conn: &mut PgConnection, user: NewUser) -> User {
     }
 }
 
+pub fn delete_user(conn: &mut PgConnection, id: Uuid) -> User {
+    diesel::delete(users::table.filter(users::id.eq(id)))
+        .get_result::<User>(conn)
+        .expect("Error deleting user")
+}
+
 fn check_if_username_available(conn: &mut PgConnection, username: &str) -> bool {
     match users::table
         .filter(users::username.eq(username))

@@ -39,7 +39,7 @@ pub fn create_user(conn: &mut PgConnection, user: NewUser) -> NewUser {
     user
 }
 
-pub fn check_if_username_available(conn: &mut PgConnection, username: &str) -> bool {
+fn check_if_username_available(conn: &mut PgConnection, username: &str) -> bool {
     match users::table
         .filter(users::username.eq(username))
         .load::<User>(conn)
@@ -49,7 +49,7 @@ pub fn check_if_username_available(conn: &mut PgConnection, username: &str) -> b
     }
 }
 
-pub fn check_if_email_available(conn: &mut PgConnection, email: &str) -> bool {
+fn check_if_email_available(conn: &mut PgConnection, email: &str) -> bool {
     match users::table
         .filter(users::email.eq(email))
         .load::<User>(conn)

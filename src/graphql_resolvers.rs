@@ -14,6 +14,7 @@ pub struct User {
     email: String,
     last_code_gen_request: Option<NaiveDateTime>,
     login_code: Option<i32>,
+    is_registered: bool,
 }
 
 // A simple transaction.
@@ -82,6 +83,7 @@ impl Mutations {
             email: created_user.email,
             last_code_gen_request: created_user.last_code_gen_request,
             login_code: created_user.login_code,
+            is_registered: created_user.is_registered,
         })
     }
     fn delete_user(id: Uuid) -> FieldResult<User> {
@@ -93,6 +95,7 @@ impl Mutations {
             email: user.email,
             last_code_gen_request: user.last_code_gen_request,
             login_code: user.login_code,
+            is_registered: user.is_registered,
         })
     }
 }

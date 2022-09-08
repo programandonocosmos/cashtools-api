@@ -13,6 +13,7 @@ pub struct User {
     pub email: String,
     pub last_code_gen_request: Option<NaiveDateTime>,
     pub login_code: Option<i32>,
+    pub is_registered: bool,
 }
 
 #[derive(Insertable, Clone)]

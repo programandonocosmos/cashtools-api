@@ -1,5 +1,5 @@
 use chrono::{NaiveDate, NaiveDateTime};
-use juniper::{graphql_object, EmptyMutation, EmptySubscription, FieldResult, GraphQLObject};
+use juniper::{graphql_object, EmptySubscription, FieldResult, GraphQLObject};
 use uuid::Uuid;
 
 use crate::models;
@@ -86,5 +86,4 @@ impl Mutations {
     }
 }
 
-pub type Schema =
-    juniper::RootNode<'static, Query, EmptyMutation<Context>, EmptySubscription<Context>>;
+pub type Schema = juniper::RootNode<'static, Query, Mutations, EmptySubscription<Context>>;

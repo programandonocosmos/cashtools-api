@@ -25,18 +25,17 @@ pub struct NewUser {
     pub login_code: Option<i32>,
 }
 
-pub fn create_user(conn: &mut PgConnection, user: NewUser) -> NewUser {
+pub fn create_user(conn: &mut PgConnection, user: NewUser) -> User {
     let username_is_available = check_if_username_available(conn, &user.username);
     let email_is_available = check_if_email_available(conn, &user.email);
 
     match (username_is_available, email_is_available) {
         (true, true) => diesel::insert_into(users::table)
             .values(&user)
-            .execute(conn)
+            .get_result::<User>(conn)
             .expect("Error saving user"),
         _ => panic!("User already exists"),
-    };
-    user
+    }
 }
 
 fn check_if_username_available(conn: &mut PgConnection, username: &str) -> bool {

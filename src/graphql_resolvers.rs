@@ -76,7 +76,7 @@ impl Mutations {
         };
         let created_user = services::user::create_user(user);
         Ok(User {
-            id: Uuid::new_v4(),
+            id: created_user.id,
             username: created_user.username,
             register_date: created_user.register_date,
             email: created_user.email,

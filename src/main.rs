@@ -1,4 +1,4 @@
-use juniper::{EmptyMutation, EmptySubscription};
+use juniper::EmptySubscription;
 use rocket::{response::content, State};
 
 #[macro_use]
@@ -43,7 +43,7 @@ fn rocket() -> _ {
         .manage(graphql_resolvers::Context::new())
         .manage(graphql_resolvers::Schema::new(
             graphql_resolvers::Query,
-            EmptyMutation::<graphql_resolvers::Context>::new(),
+            graphql_resolvers::Mutations,
             EmptySubscription::<graphql_resolvers::Context>::new(),
         ))
         .mount(

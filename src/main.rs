@@ -8,6 +8,7 @@ mod database;
 mod graphql_resolvers;
 mod models;
 mod schema;
+mod sendemail;
 mod services;
 
 #[get("/")]

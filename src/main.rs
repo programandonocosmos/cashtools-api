@@ -6,6 +6,7 @@ extern crate rocket;
 
 mod database;
 mod graphql_resolvers;
+mod jwt;
 mod models;
 mod schema;
 mod sendemail;

@@ -39,8 +39,8 @@ pub fn create_user(conn: &mut PgConnection, user: NewUser) -> User {
     }
 }
 
-pub fn delete_user(conn: &mut PgConnection, id: Uuid) -> User {
-    diesel::delete(users::table.filter(users::id.eq(id)))
+pub fn delete_user(conn: &mut PgConnection, email: String) -> User {
+    diesel::delete(users::table.filter(users::email.eq(email)))
         .get_result::<User>(conn)
         .expect("Error deleting user")
 }
@@ -62,5 +62,20 @@ fn check_if_email_available(conn: &mut PgConnection, email: &str) -> bool {
     {
         Ok(v) => v.is_empty(),
         Err(_) => panic!("Error checking if email is available"),
+    }
+}
+
+pub fn get_login_code(conn: &mut PgConnection, email: &str) -> i32 {
+    let result = users::table
+        .filter(users::email.eq(email))
+        .load::<User>(conn)
+        .expect("Error getting login code");
+
+    match result.as_slice() {
+        [User {
+            login_code: Some(l),
+            ..
+        }] => *l,
+        _ => panic!("Error extracting a valid login code"),
     }
 }

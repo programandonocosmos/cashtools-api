@@ -61,6 +61,11 @@ impl Query {
             .collect();
         Ok(transactions)
     }
+
+    fn token(email: String, login_code: i32) -> FieldResult<String> {
+        let token = services::user::validate_and_generate_token(email, login_code);
+        Ok(token)
+    }
 }
 
 pub struct Mutations;
@@ -86,8 +91,8 @@ impl Mutations {
             is_registered: created_user.is_registered,
         })
     }
-    fn delete_user(id: Uuid) -> FieldResult<User> {
-        let user = services::user::delete_user(id);
+    fn delete_user(token: String) -> FieldResult<User> {
+        let user = services::user::delete_user(token);
         Ok(User {
             id: user.id,
             username: user.username,

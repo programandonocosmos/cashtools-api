@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::models;
 use crate::services;
 
-// A My Money user.
+// A Cashtools user.
 #[derive(GraphQLObject, Clone)]
 pub struct User {
     id: Uuid,

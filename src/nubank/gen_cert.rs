@@ -166,7 +166,7 @@ fn build_payload_to_request_code(
     let device_id = generate(12, charset);
     let public_key = get_public_key(key1)?;
     let public_key_crypto = get_public_key(key2)?;
-    let model = format!("MyMoney Client ({})", device_id);
+    let model = format!("Cashtools Client ({})", device_id);
 
     Ok(PayloadToRequestCode {
         login: cpf.to_string(),

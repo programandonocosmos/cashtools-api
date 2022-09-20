@@ -2,7 +2,7 @@ use chrono::NaiveDate;
 use diesel::prelude::*;
 use uuid::Uuid;
 
-use crate::schema::transactions;
+use crate::{database, schema::transactions};
 
 #[derive(Queryable, Insertable, Clone)]
 #[diesel(table_name = transactions)]
@@ -16,18 +16,18 @@ pub struct Transaction {
     pub description: Option<String>,
 }
 
-pub fn create_transaction(conn: &mut PgConnection, t: Transaction) -> Transaction {
+pub fn create_transaction(conn: &database::DbPool, t: Transaction) -> Transaction {
     diesel::insert_into(transactions::table)
         .values(&t)
-        .execute(conn)
+        .execute(&mut conn.get().unwrap())
         .expect("Error saving transaction");
     t
 }
 
-pub fn list_user_transactions(conn: &mut PgConnection, user_id: Uuid) -> Vec<Transaction> {
+pub fn list_user_transactions(conn: &database::DbPool, user_id: Uuid) -> Vec<Transaction> {
     match transactions::table
         .filter(transactions::related_user.eq(user_id))
-        .load::<Transaction>(conn)
+        .load::<Transaction>(&mut conn.get().unwrap())
     {
         Ok(v) => v,
         Err(_) => panic!("Error loading transactions"),

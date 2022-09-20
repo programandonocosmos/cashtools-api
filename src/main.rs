@@ -1,12 +1,14 @@
 use juniper::EmptySubscription;
 use rocket::{response::content, State};
 
+use dotenvy::dotenv;
+use std::env;
+
 #[macro_use]
 extern crate rocket;
 
 mod database;
 mod graphql_resolvers;
-mod jwt;
 mod models;
 mod schema;
 mod sendemail;
@@ -37,12 +39,19 @@ fn post_graphql_handler(
 
 #[launch]
 fn rocket() -> _ {
+    dotenv().ok();
+
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+
+    let pool = database::establish_pooled_connection(database_url);
+
     let figment = rocket::Config::figment()
         .merge(("port", 8080))
         .merge(("address", "0.0.0.0"));
 
     rocket::custom(figment)
-        .manage(graphql_resolvers::Context::new())
+        .manage(graphql_resolvers::Context { pool, jwt_secret })
         .manage(graphql_resolvers::Schema::new(
             graphql_resolvers::Query,
             graphql_resolvers::Mutations,

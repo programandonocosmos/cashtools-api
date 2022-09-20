@@ -2,6 +2,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 use juniper::{graphql_object, EmptySubscription, FieldResult, GraphQLObject};
 use uuid::Uuid;
 
+use crate::database;
 use crate::models;
 use crate::services;
 
@@ -29,41 +30,45 @@ struct Transaction {
     description: Option<String>,
 }
 
-pub struct Context {}
-impl juniper::Context for Context {}
-impl Context {
-    pub fn new() -> Self {
-        Context {}
-    }
+pub struct Context {
+    pub pool: database::DbPool,
+    pub jwt_secret: String,
 }
+impl juniper::Context for Context {}
 
 pub struct Query;
 
 #[graphql_object(context = Context)]
 impl Query {
-    fn apiVersion() -> &'static str {
+    async fn apiVersion() -> &'static str {
         "1.0"
     }
 
-    fn transactions(user_uid: String) -> FieldResult<Vec<Transaction>> {
+    async fn transactions(context: &Context, user_uid: String) -> FieldResult<Vec<Transaction>> {
         let parsed_user_uid = Uuid::parse_str(&user_uid)?;
-        let transactions = services::transaction::list_user_transactions(parsed_user_uid)
-            .iter()
-            .map(|t| Transaction {
-                id: t.id,
-                related_user: t.related_user,
-                entry_date: t.entry_date,
-                entry_account_code: t.clone().entry_account_code,
-                exit_account_code: t.clone().exit_account_code,
-                amount: t.amount,
-                description: t.clone().description,
-            })
-            .collect();
+        let transactions =
+            services::transaction::list_user_transactions(&context.pool, parsed_user_uid)
+                .iter()
+                .map(|t| Transaction {
+                    id: t.id,
+                    related_user: t.related_user,
+                    entry_date: t.entry_date,
+                    entry_account_code: t.clone().entry_account_code,
+                    exit_account_code: t.clone().exit_account_code,
+                    amount: t.amount,
+                    description: t.clone().description,
+                })
+                .collect();
         Ok(transactions)
     }
 
-    fn token(email: String, login_code: i32) -> FieldResult<String> {
-        let token = services::user::validate_and_generate_token(email, login_code);
+    async fn token(context: &Context, email: String, login_code: i32) -> FieldResult<String> {
+        let token = services::user::validate_and_generate_token(
+            &context.pool,
+            email,
+            login_code,
+            &context.jwt_secret,
+        )?;
         Ok(token)
     }
 }
@@ -72,7 +77,7 @@ pub struct Mutations;
 
 #[graphql_object(context = Context)]
 impl Mutations {
-    fn create_user(username: String, email: String) -> FieldResult<User> {
+    async fn create_user(context: &Context, username: String, email: String) -> FieldResult<User> {
         let user = models::user::NewUser {
             username,
             register_date: None,
@@ -80,7 +85,7 @@ impl Mutations {
             last_code_gen_request: None,
             login_code: None,
         };
-        let created_user = services::user::create_user(user);
+        let created_user = services::user::create_user(&context.pool, user)?;
         Ok(User {
             id: created_user.id,
             username: created_user.username,
@@ -91,8 +96,8 @@ impl Mutations {
             is_registered: created_user.is_registered,
         })
     }
-    fn delete_user(token: String) -> FieldResult<User> {
-        let user = services::user::delete_user(token);
+    fn delete_user(context: &Context, token: String) -> FieldResult<User> {
+        let user = services::user::delete_user(&context.pool, token, &context.jwt_secret)?;
         Ok(User {
             id: user.id,
             username: user.username,

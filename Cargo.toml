@@ -7,13 +7,14 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.22"
-diesel = { version = "2.0.0", features = ["postgres", "chrono", "uuid"] }
+diesel = { version = "2.0.0", features = ["postgres", "chrono", "uuid", "r2d2"] }
 dotenvy = "0.15.3"
 hmac = "0.12.1"
 juniper = "0.15.10"
 juniper_rocket = "0.8.2"
 jwt = { version = "0.16.0" }
 openssl = { version = "0.10.41" }
+r2d2 = "0.8.10"
 rand = "0.8.5"
 random-string = "1.0.0"
 reqwest = { version = "0.11.11", features = ["native-tls", "json"] }

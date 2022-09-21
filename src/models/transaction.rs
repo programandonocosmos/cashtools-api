@@ -23,13 +23,19 @@ pub enum TransactionModelError {
     FailedToListTransactions(diesel::result::Error),
 }
 
+impl From<r2d2::Error> for TransactionModelError {
+    fn from(error: r2d2::Error) -> Self {
+        TransactionModelError::FailedToGetConn(error)
+    }
+}
+
 pub fn create_transaction(
     conn: &database::DbPool,
     t: Transaction,
 ) -> Result<Transaction, TransactionModelError> {
     diesel::insert_into(transactions::table)
         .values(&t)
-        .get_result::<Transaction>(&mut conn.get().map_err(TransactionModelError::FailedToGetConn)?)
+        .get_result::<Transaction>(&mut conn.get()?)
         .map_err(TransactionModelError::FailedToCreateTransaction)
 }
 
@@ -39,6 +45,6 @@ pub fn list_user_transactions(
 ) -> Result<Vec<Transaction>, TransactionModelError> {
     transactions::table
         .filter(transactions::related_user.eq(user_id))
-        .load::<Transaction>(&mut conn.get().map_err(TransactionModelError::FailedToGetConn)?)
+        .load::<Transaction>(&mut conn.get()?)
         .map_err(TransactionModelError::FailedToListTransactions)
 }

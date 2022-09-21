@@ -28,6 +28,12 @@ impl fmt::Display for UserServiceError {
     }
 }
 
+impl From<user::UserModelError> for UserServiceError {
+    fn from(error: user::UserModelError) -> Self {
+        UserServiceError::UserModelFailed(error)
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 struct TokenContent {
     email: String,
@@ -44,7 +50,7 @@ pub fn create_user(conn: &database::DbPool, user: NewUser) -> Result<User, UserS
         login_code: Some(login_code),
         ..user
     };
-    user::create_user(conn, modified_user).map_err(UserServiceError::UserModelFailed)
+    Ok(user::create_user(conn, modified_user)?)
 }
 
 pub fn delete_user(
@@ -53,7 +59,7 @@ pub fn delete_user(
     jwt_secret: &str,
 ) -> Result<User, UserServiceError> {
     let email = verify_token(token, jwt_secret)?;
-    user::delete_user(conn, email).map_err(UserServiceError::UserModelFailed)
+    Ok(user::delete_user(conn, email)?)
 }
 
 pub fn validate_and_generate_token(
@@ -62,8 +68,7 @@ pub fn validate_and_generate_token(
     login_code: i32,
     jwt_secret: &str,
 ) -> Result<String, UserServiceError> {
-    let real_login_code =
-        user::get_login_code(conn, &email).map_err(UserServiceError::UserModelFailed)?;
+    let real_login_code = user::get_login_code(conn, &email)?;
 
     if login_code == real_login_code {
         return generate_token(&email, jwt_secret);

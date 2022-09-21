@@ -16,20 +16,29 @@ pub struct Transaction {
     pub description: Option<String>,
 }
 
-pub fn create_transaction(conn: &database::DbPool, t: Transaction) -> Transaction {
-    diesel::insert_into(transactions::table)
-        .values(&t)
-        .execute(&mut conn.get().unwrap())
-        .expect("Error saving transaction");
-    t
+#[derive(Debug)]
+pub enum TransactionModelError {
+    FailedToGetConn(r2d2::Error),
+    FailedToCreateTransaction(diesel::result::Error),
+    FailedToListTransactions(diesel::result::Error),
 }
 
-pub fn list_user_transactions(conn: &database::DbPool, user_id: Uuid) -> Vec<Transaction> {
-    match transactions::table
+pub fn create_transaction(
+    conn: &database::DbPool,
+    t: Transaction,
+) -> Result<Transaction, TransactionModelError> {
+    diesel::insert_into(transactions::table)
+        .values(&t)
+        .get_result::<Transaction>(&mut conn.get().map_err(TransactionModelError::FailedToGetConn)?)
+        .map_err(TransactionModelError::FailedToCreateTransaction)
+}
+
+pub fn list_user_transactions(
+    conn: &database::DbPool,
+    user_id: Uuid,
+) -> Result<Vec<Transaction>, TransactionModelError> {
+    transactions::table
         .filter(transactions::related_user.eq(user_id))
-        .load::<Transaction>(&mut conn.get().unwrap())
-    {
-        Ok(v) => v,
-        Err(_) => panic!("Error loading transactions"),
-    }
+        .load::<Transaction>(&mut conn.get().map_err(TransactionModelError::FailedToGetConn)?)
+        .map_err(TransactionModelError::FailedToListTransactions)
 }

@@ -47,7 +47,7 @@ impl Query {
     async fn transactions(context: &Context, user_uid: String) -> FieldResult<Vec<Transaction>> {
         let parsed_user_uid = Uuid::parse_str(&user_uid)?;
         let transactions =
-            services::transaction::list_user_transactions(&context.pool, parsed_user_uid)
+            services::transaction::list_user_transactions(&context.pool, parsed_user_uid)?
                 .iter()
                 .map(|t| Transaction {
                     id: t.id,

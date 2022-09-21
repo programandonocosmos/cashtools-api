@@ -40,6 +40,12 @@ pub enum UserModelError {
     MoreThanOneEmailError,
 }
 
+impl From<r2d2::Error> for UserModelError {
+    fn from(error: r2d2::Error) -> Self {
+        UserModelError::FailedToGetConn(error)
+    }
+}
+
 pub fn create_user(conn: &database::DbPool, user: NewUser) -> Result<User, UserModelError> {
     let username_is_available = check_if_username_available(&conn, &user.username)?;
     let email_is_available = check_if_email_available(&conn, &user.email)?;
@@ -47,7 +53,7 @@ pub fn create_user(conn: &database::DbPool, user: NewUser) -> Result<User, UserM
     match (username_is_available, email_is_available) {
         (true, true) => diesel::insert_into(users::table)
             .values(&user)
-            .get_result::<User>(&mut conn.get().map_err(UserModelError::FailedToGetConn)?)
+            .get_result::<User>(&mut conn.get()?)
             .map_err(UserModelError::FailedToCreateUser),
         _ => Err(UserModelError::UserAlreadyExists),
     }
@@ -55,7 +61,7 @@ pub fn create_user(conn: &database::DbPool, user: NewUser) -> Result<User, UserM
 
 pub fn delete_user(conn: &database::DbPool, email: String) -> Result<User, UserModelError> {
     diesel::delete(users::table.filter(users::email.eq(email)))
-        .get_result::<User>(&mut conn.get().map_err(UserModelError::FailedToGetConn)?)
+        .get_result::<User>(&mut conn.get()?)
         .map_err(UserModelError::FailedToDeleteUser)
 }
 
@@ -65,7 +71,7 @@ fn check_if_username_available(
 ) -> Result<bool, UserModelError> {
     users::table
         .filter(users::username.eq(username))
-        .load::<User>(&mut conn.get().map_err(UserModelError::FailedToGetConn)?)
+        .load::<User>(&mut conn.get()?)
         .map(|v| v.is_empty())
         .map_err(UserModelError::FailedToCheckAvailability)
 }
@@ -73,7 +79,7 @@ fn check_if_username_available(
 fn check_if_email_available(conn: &database::DbPool, email: &str) -> Result<bool, UserModelError> {
     users::table
         .filter(users::email.eq(email))
-        .load::<User>(&mut conn.get().map_err(UserModelError::FailedToGetConn)?)
+        .load::<User>(&mut conn.get()?)
         .map(|v| v.is_empty())
         .map_err(UserModelError::FailedToCheckAvailability)
 }
@@ -81,7 +87,7 @@ fn check_if_email_available(conn: &database::DbPool, email: &str) -> Result<bool
 pub fn get_login_code(conn: &database::DbPool, email: &str) -> Result<i32, UserModelError> {
     let result = users::table
         .filter(users::email.eq(email))
-        .load::<User>(&mut conn.get().map_err(UserModelError::FailedToGetConn)?)
+        .load::<User>(&mut conn.get()?)
         .map_err(UserModelError::FailedToGetLoginCode)?;
 
     match result.as_slice() {

@@ -18,18 +18,22 @@ impl fmt::Display for TransactionServiceError {
     }
 }
 
+impl From<transaction::TransactionModelError> for TransactionServiceError {
+    fn from(error: transaction::TransactionModelError) -> Self {
+        TransactionServiceError::TransactionModelFailed(error)
+    }
+}
+
 fn create_transaction(
     conn: &database::DbPool,
     t: Transaction,
 ) -> Result<Transaction, TransactionServiceError> {
-    transaction::create_transaction(conn, t)
-        .map_err(TransactionServiceError::TransactionModelFailed)
+    Ok(transaction::create_transaction(conn, t)?)
 }
 
 pub fn list_user_transactions(
     conn: &database::DbPool,
     user_id: Uuid,
 ) -> Result<Vec<Transaction>, TransactionServiceError> {
-    transaction::list_user_transactions(conn, user_id)
-        .map_err(TransactionServiceError::TransactionModelFailed)
+    Ok(transaction::list_user_transactions(conn, user_id)?)
 }

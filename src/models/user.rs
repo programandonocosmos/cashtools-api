@@ -3,28 +3,54 @@ use diesel::prelude::*;
 use r2d2;
 use uuid::Uuid;
 
-use crate::{database, schema::users};
+use crate::{database, schema::users as user_schema, services::user as user_service};
 
 #[derive(Queryable, Clone)]
-#[diesel(table_name = users)]
-pub struct User {
-    pub id: Uuid,
-    pub username: String,
-    pub register_date: Option<NaiveDateTime>,
-    pub email: String,
-    pub last_code_gen_request: Option<NaiveDateTime>,
-    pub login_code: Option<i32>,
-    pub is_registered: bool,
+#[diesel(table_name = user_schema)]
+struct User {
+    id: Uuid,
+    username: String,
+    register_date: Option<NaiveDateTime>,
+    email: String,
+    last_code_gen_request: Option<NaiveDateTime>,
+    login_code: Option<i32>,
+    is_registered: bool,
 }
 
 #[derive(Insertable, Clone)]
-#[diesel(table_name = users)]
-pub struct NewUser {
-    pub username: String,
-    pub register_date: Option<NaiveDateTime>,
-    pub email: String,
-    pub last_code_gen_request: Option<NaiveDateTime>,
-    pub login_code: Option<i32>,
+#[diesel(table_name = user_schema)]
+struct NewUser {
+    username: String,
+    register_date: Option<NaiveDateTime>,
+    email: String,
+    last_code_gen_request: Option<NaiveDateTime>,
+    login_code: Option<i32>,
+}
+
+impl user_service::NewUser {
+    fn convert(&self) -> NewUser {
+        NewUser {
+            username: self.username.clone(),
+            register_date: None,
+            email: self.email.clone(),
+            last_code_gen_request: Some(self.last_code_gen_request),
+            login_code: Some(self.login_code),
+        }
+    }
+}
+
+impl User {
+    fn convert(&self) -> user_service::User {
+        user_service::User {
+            id: self.id,
+            username: self.username.clone(),
+            register_date: self.register_date,
+            email: self.email.clone(),
+            last_code_gen_request: self.last_code_gen_request,
+            login_code: self.login_code,
+            is_registered: self.is_registered,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -46,22 +72,30 @@ impl From<r2d2::Error> for UserModelError {
     }
 }
 
-pub fn create_user(conn: &database::DbPool, user: NewUser) -> Result<User, UserModelError> {
+pub fn create_user(
+    conn: &database::DbPool,
+    user: user_service::NewUser,
+) -> Result<user_service::User, UserModelError> {
     let username_is_available = check_if_username_available(&conn, &user.username)?;
     let email_is_available = check_if_email_available(&conn, &user.email)?;
 
     match (username_is_available, email_is_available) {
-        (true, true) => diesel::insert_into(users::table)
-            .values(&user)
+        (true, true) => diesel::insert_into(user_schema::table)
+            .values(&user.convert())
             .get_result::<User>(&mut conn.get()?)
+            .map(|u| u.convert())
             .map_err(UserModelError::FailedToCreateUser),
         _ => Err(UserModelError::UserAlreadyExists),
     }
 }
 
-pub fn delete_user(conn: &database::DbPool, email: String) -> Result<User, UserModelError> {
-    diesel::delete(users::table.filter(users::email.eq(email)))
+pub fn delete_user(
+    conn: &database::DbPool,
+    email: String,
+) -> Result<user_service::User, UserModelError> {
+    diesel::delete(user_schema::table.filter(user_schema::email.eq(email)))
         .get_result::<User>(&mut conn.get()?)
+        .map(|u| u.convert())
         .map_err(UserModelError::FailedToDeleteUser)
 }
 
@@ -69,24 +103,24 @@ fn check_if_username_available(
     conn: &database::DbPool,
     username: &str,
 ) -> Result<bool, UserModelError> {
-    users::table
-        .filter(users::username.eq(username))
+    user_schema::table
+        .filter(user_schema::username.eq(username))
         .load::<User>(&mut conn.get()?)
         .map(|v| v.is_empty())
         .map_err(UserModelError::FailedToCheckAvailability)
 }
 
 fn check_if_email_available(conn: &database::DbPool, email: &str) -> Result<bool, UserModelError> {
-    users::table
-        .filter(users::email.eq(email))
+    user_schema::table
+        .filter(user_schema::email.eq(email))
         .load::<User>(&mut conn.get()?)
         .map(|v| v.is_empty())
         .map_err(UserModelError::FailedToCheckAvailability)
 }
 
 pub fn get_login_code(conn: &database::DbPool, email: &str) -> Result<i32, UserModelError> {
-    let result = users::table
-        .filter(users::email.eq(email))
+    let result = user_schema::table
+        .filter(user_schema::email.eq(email))
         .load::<User>(&mut conn.get()?)
         .map_err(UserModelError::FailedToGetLoginCode)?;
 
@@ -96,7 +130,7 @@ pub fn get_login_code(conn: &database::DbPool, email: &str) -> Result<i32, UserM
             login_code: Some(l),
             ..
         }] => Ok(l.clone()),
-        [u] => Err(UserModelError::UserWithoutLoginCode),
+        [_u] => Err(UserModelError::UserWithoutLoginCode),
         _ => Err(UserModelError::MoreThanOneEmailError),
     }
 }

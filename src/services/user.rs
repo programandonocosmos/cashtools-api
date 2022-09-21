@@ -71,9 +71,9 @@ pub fn validate_and_generate_token(
     let real_login_code = user::get_login_code(conn, &email)?;
 
     if login_code == real_login_code {
-        return generate_token(&email, jwt_secret);
+        generate_token(&email, jwt_secret)
     } else {
-        return Err(UserServiceError::LoginCodeNotMatching);
+        Err(UserServiceError::LoginCodeNotMatching)
     }
 }
 

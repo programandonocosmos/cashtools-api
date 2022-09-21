@@ -1,14 +1,15 @@
 use std::fmt;
 
-use chrono::Utc;
+use chrono::{NaiveDateTime, Utc};
 use rand::Rng;
 
 use hmac::{Hmac, Mac};
 use jwt::{SignWithKey, VerifyWithKey};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
+use uuid::Uuid;
 
-use crate::models::user::{self, NewUser, User};
+use crate::models::user;
 use crate::sendemail::send_code;
 
 use crate::database;
@@ -34,23 +35,49 @@ impl From<user::UserModelError> for UserServiceError {
     }
 }
 
+// User that will be returned when you try to get user information
+#[derive(Clone)]
+pub struct User {
+    pub id: Uuid,
+    pub username: String,
+    pub register_date: Option<NaiveDateTime>,
+    pub email: String,
+    pub last_code_gen_request: Option<NaiveDateTime>,
+    pub login_code: Option<i32>,
+    pub is_registered: bool,
+}
+
+// Essential information for create a new user in the database
+#[derive(Clone)]
+pub struct NewUser {
+    pub username: String,
+    pub email: String,
+    pub last_code_gen_request: NaiveDateTime,
+    pub login_code: i32,
+}
+
 #[derive(Serialize, Deserialize)]
 struct TokenContent {
     email: String,
 }
 
-pub fn create_user(conn: &database::DbPool, user: NewUser) -> Result<User, UserServiceError> {
-    let now = Utc::now().naive_utc();
+pub fn create_user(
+    conn: &database::DbPool,
+    username: String,
+    email: String,
+) -> Result<User, UserServiceError> {
+    let last_code_gen_request = Utc::now().naive_utc();
     // TODO: Use login_code as a String to generate a code more dificult to crack
     let mut rng = rand::thread_rng();
     let login_code = rng.gen_range(100000..999999);
-    let _ = send_code(&user.email, &login_code);
-    let modified_user = NewUser {
-        last_code_gen_request: Some(now),
-        login_code: Some(login_code),
-        ..user
+    let _ = send_code(&email, &login_code);
+    let user = NewUser {
+        username,
+        email,
+        last_code_gen_request,
+        login_code,
     };
-    Ok(user::create_user(conn, modified_user)?)
+    Ok(user::create_user(conn, user)?)
 }
 
 pub fn delete_user(

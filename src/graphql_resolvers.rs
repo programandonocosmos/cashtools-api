@@ -3,7 +3,6 @@ use juniper::{graphql_object, EmptySubscription, FieldResult, GraphQLObject};
 use uuid::Uuid;
 
 use crate::database;
-use crate::models;
 use crate::services;
 
 // A Cashtools user.
@@ -28,6 +27,20 @@ struct Transaction {
     exit_account_code: Option<String>,
     amount: f64,
     description: Option<String>,
+}
+
+impl services::user::User {
+    fn convert(&self) -> User {
+        User {
+            id: self.id,
+            username: self.username.clone(),
+            register_date: self.register_date,
+            email: self.email.clone(),
+            last_code_gen_request: self.last_code_gen_request,
+            login_code: self.login_code,
+            is_registered: self.is_registered,
+        }
+    }
 }
 
 pub struct Context {
@@ -78,35 +91,12 @@ pub struct Mutations;
 #[graphql_object(context = Context)]
 impl Mutations {
     async fn create_user(context: &Context, username: String, email: String) -> FieldResult<User> {
-        let user = models::user::NewUser {
-            username,
-            register_date: None,
-            email,
-            last_code_gen_request: None,
-            login_code: None,
-        };
-        let created_user = services::user::create_user(&context.pool, user)?;
-        Ok(User {
-            id: created_user.id,
-            username: created_user.username,
-            register_date: created_user.register_date,
-            email: created_user.email,
-            last_code_gen_request: created_user.last_code_gen_request,
-            login_code: created_user.login_code,
-            is_registered: created_user.is_registered,
-        })
+        let created_user = services::user::create_user(&context.pool, username, email)?;
+        Ok(created_user.convert())
     }
     fn delete_user(context: &Context, token: String) -> FieldResult<User> {
         let user = services::user::delete_user(&context.pool, token, &context.jwt_secret)?;
-        Ok(User {
-            id: user.id,
-            username: user.username,
-            register_date: user.register_date,
-            email: user.email,
-            last_code_gen_request: user.last_code_gen_request,
-            login_code: user.login_code,
-            is_registered: user.is_registered,
-        })
+        Ok(user.convert())
     }
 }
 

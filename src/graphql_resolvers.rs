@@ -32,7 +32,6 @@ struct Transaction {
 // An input transaction.
 #[derive(GraphQLInputObject, Clone)]
 struct NewTransaction {
-    related_user: Uuid,
     entry_date: NaiveDate,
     entry_account_code: Option<String>,
     exit_account_code: Option<String>,
@@ -71,7 +70,6 @@ impl services::transaction::Transaction {
 impl NewTransaction {
     fn to_service(&self) -> services::transaction::NewTransaction {
         services::transaction::NewTransaction {
-            related_user: self.related_user,
             entry_date: self.entry_date,
             entry_account_code: self.entry_account_code.clone(),
             exit_account_code: self.exit_account_code.clone(),
@@ -95,13 +93,15 @@ impl Query {
         "1.0"
     }
 
-    async fn transactions(context: &Context, user_uid: String) -> FieldResult<Vec<Transaction>> {
-        let parsed_user_uid = Uuid::parse_str(&user_uid)?;
-        let transactions =
-            services::transaction::list_user_transactions(&context.pool, parsed_user_uid)?
-                .iter()
-                .map(|t| t.to_graphql())
-                .collect();
+    async fn transactions(context: &Context, token: String) -> FieldResult<Vec<Transaction>> {
+        let transactions = services::transaction::list_user_transactions(
+            &context.pool,
+            &token,
+            &context.jwt_secret,
+        )?
+        .iter()
+        .map(|t| t.to_graphql())
+        .collect();
         Ok(transactions)
     }
 
@@ -130,10 +130,15 @@ impl Mutations {
     }
     async fn create_transaction(
         context: &Context,
+        token: String,
         transaction: NewTransaction,
     ) -> FieldResult<Transaction> {
-        let created_transaction =
-            services::transaction::create_transaction(&context.pool, transaction.to_service())?;
+        let created_transaction = services::transaction::create_transaction(
+            &context.pool,
+            &token,
+            &context.jwt_secret,
+            transaction.to_service(),
+        )?;
         Ok(created_transaction.to_graphql())
     }
 }

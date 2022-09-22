@@ -3,7 +3,7 @@ use std::fmt;
 use chrono::NaiveDate;
 use uuid::Uuid;
 
-use crate::{database, models::transaction};
+use crate::{database, jwt, models::transaction, models::user};
 
 pub struct Transaction {
     pub id: Uuid,
@@ -16,6 +16,14 @@ pub struct Transaction {
 }
 
 pub struct NewTransaction {
+    pub entry_date: NaiveDate,
+    pub entry_account_code: Option<String>,
+    pub exit_account_code: Option<String>,
+    pub amount: f64,
+    pub description: Option<String>,
+}
+
+pub struct NewTransactionWithRelatedUser {
     pub related_user: Uuid,
     pub entry_date: NaiveDate,
     pub entry_account_code: Option<String>,
@@ -27,6 +35,8 @@ pub struct NewTransaction {
 #[derive(Debug)]
 pub enum TransactionServiceError {
     TransactionModelFailed(transaction::TransactionModelError),
+    UserModelFailed(user::UserModelError),
+    JwtError(jwt::JwtError),
 }
 
 impl fmt::Display for TransactionServiceError {
@@ -41,16 +51,46 @@ impl From<transaction::TransactionModelError> for TransactionServiceError {
     }
 }
 
+impl From<user::UserModelError> for TransactionServiceError {
+    fn from(error: user::UserModelError) -> Self {
+        TransactionServiceError::UserModelFailed(error)
+    }
+}
+
+impl From<jwt::JwtError> for TransactionServiceError {
+    fn from(error: jwt::JwtError) -> Self {
+        TransactionServiceError::JwtError(error)
+    }
+}
+
 pub fn create_transaction(
     conn: &database::DbPool,
-    t: NewTransaction,
+    token: &str,
+    jwt_secret: &str,
+    new_transaction: NewTransaction,
 ) -> Result<Transaction, TransactionServiceError> {
-    Ok(transaction::create_transaction(conn, t)?)
+    let email = jwt::verify_token(token, jwt_secret)?;
+    let id = user::get_id_by_email(conn, &email)?;
+    let transaction_with_related_user = NewTransactionWithRelatedUser {
+        related_user: id,
+        entry_date: new_transaction.entry_date,
+        entry_account_code: new_transaction.entry_account_code,
+        exit_account_code: new_transaction.exit_account_code,
+        amount: new_transaction.amount,
+        description: new_transaction.description,
+    };
+    Ok(transaction::create_transaction(
+        conn,
+        transaction_with_related_user,
+    )?)
 }
 
 pub fn list_user_transactions(
     conn: &database::DbPool,
-    user_id: Uuid,
+    token: &str,
+    jwt_secret: &str,
 ) -> Result<Vec<Transaction>, TransactionServiceError> {
-    Ok(transaction::list_user_transactions(conn, user_id)?)
+    let email = jwt::verify_token(token, jwt_secret)?;
+    let id = user::get_id_by_email(conn, &email)?;
+    Ok(transaction::list_user_transactions(conn, &id)?)
 }

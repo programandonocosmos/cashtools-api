@@ -30,7 +30,7 @@ struct NewTransaction {
     description: Option<String>,
 }
 
-impl transaction_service::NewTransaction {
+impl transaction_service::NewTransactionWithRelatedUser {
     fn to_model(&self) -> NewTransaction {
         NewTransaction {
             related_user: self.related_user,
@@ -72,7 +72,7 @@ impl From<r2d2::Error> for TransactionModelError {
 
 pub fn create_transaction(
     conn: &database::DbPool,
-    t: transaction_service::NewTransaction,
+    t: transaction_service::NewTransactionWithRelatedUser,
 ) -> Result<transaction_service::Transaction, TransactionModelError> {
     diesel::insert_into(transaction_schema::table)
         .values(&t.to_model())
@@ -83,7 +83,7 @@ pub fn create_transaction(
 
 pub fn list_user_transactions(
     conn: &database::DbPool,
-    user_id: Uuid,
+    user_id: &Uuid,
 ) -> Result<Vec<transaction_service::Transaction>, TransactionModelError> {
     Ok(transaction_schema::table
         .filter(transaction_schema::related_user.eq(user_id))

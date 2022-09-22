@@ -1,11 +1,28 @@
 use std::fmt;
 
+use chrono::NaiveDate;
 use uuid::Uuid;
 
-use crate::{
-    database,
-    models::transaction::{self, Transaction},
-};
+use crate::{database, models::transaction};
+
+pub struct Transaction {
+    pub id: Uuid,
+    pub related_user: Uuid,
+    pub entry_date: NaiveDate,
+    pub entry_account_code: Option<String>,
+    pub exit_account_code: Option<String>,
+    pub amount: f64,
+    pub description: Option<String>,
+}
+
+pub struct NewTransaction {
+    pub related_user: Uuid,
+    pub entry_date: NaiveDate,
+    pub entry_account_code: Option<String>,
+    pub exit_account_code: Option<String>,
+    pub amount: f64,
+    pub description: Option<String>,
+}
 
 #[derive(Debug)]
 pub enum TransactionServiceError {
@@ -24,9 +41,9 @@ impl From<transaction::TransactionModelError> for TransactionServiceError {
     }
 }
 
-fn create_transaction(
+pub fn create_transaction(
     conn: &database::DbPool,
-    t: Transaction,
+    t: NewTransaction,
 ) -> Result<Transaction, TransactionServiceError> {
     Ok(transaction::create_transaction(conn, t)?)
 }

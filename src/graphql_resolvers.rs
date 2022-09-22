@@ -1,5 +1,5 @@
 use chrono::{NaiveDate, NaiveDateTime};
-use juniper::{graphql_object, EmptySubscription, FieldResult, GraphQLObject};
+use juniper::{graphql_object, EmptySubscription, FieldResult, GraphQLInputObject, GraphQLObject};
 use uuid::Uuid;
 
 use crate::database;
@@ -29,8 +29,19 @@ struct Transaction {
     description: Option<String>,
 }
 
+// An input transaction.
+#[derive(GraphQLInputObject, Clone)]
+struct NewTransaction {
+    related_user: Uuid,
+    entry_date: NaiveDate,
+    entry_account_code: Option<String>,
+    exit_account_code: Option<String>,
+    amount: f64,
+    description: Option<String>,
+}
+
 impl services::user::User {
-    fn convert(&self) -> User {
+    fn to_graphql(&self) -> User {
         User {
             id: self.id,
             username: self.username.clone(),
@@ -39,6 +50,33 @@ impl services::user::User {
             last_code_gen_request: self.last_code_gen_request,
             login_code: self.login_code,
             is_registered: self.is_registered,
+        }
+    }
+}
+
+impl services::transaction::Transaction {
+    fn to_graphql(&self) -> Transaction {
+        Transaction {
+            id: self.id,
+            related_user: self.related_user,
+            entry_date: self.entry_date,
+            entry_account_code: self.entry_account_code.clone(),
+            exit_account_code: self.exit_account_code.clone(),
+            amount: self.amount,
+            description: self.description.clone(),
+        }
+    }
+}
+
+impl NewTransaction {
+    fn to_service(&self) -> services::transaction::NewTransaction {
+        services::transaction::NewTransaction {
+            related_user: self.related_user,
+            entry_date: self.entry_date,
+            entry_account_code: self.entry_account_code.clone(),
+            exit_account_code: self.exit_account_code.clone(),
+            amount: self.amount,
+            description: self.description.clone(),
         }
     }
 }
@@ -62,15 +100,7 @@ impl Query {
         let transactions =
             services::transaction::list_user_transactions(&context.pool, parsed_user_uid)?
                 .iter()
-                .map(|t| Transaction {
-                    id: t.id,
-                    related_user: t.related_user,
-                    entry_date: t.entry_date,
-                    entry_account_code: t.clone().entry_account_code,
-                    exit_account_code: t.clone().exit_account_code,
-                    amount: t.amount,
-                    description: t.clone().description,
-                })
+                .map(|t| t.to_graphql())
                 .collect();
         Ok(transactions)
     }
@@ -92,11 +122,19 @@ pub struct Mutations;
 impl Mutations {
     async fn create_user(context: &Context, username: String, email: String) -> FieldResult<User> {
         let created_user = services::user::create_user(&context.pool, username, email)?;
-        Ok(created_user.convert())
+        Ok(created_user.to_graphql())
     }
     fn delete_user(context: &Context, token: String) -> FieldResult<User> {
         let user = services::user::delete_user(&context.pool, token, &context.jwt_secret)?;
-        Ok(user.convert())
+        Ok(user.to_graphql())
+    }
+    fn create_transaction(
+        context: &Context,
+        transaction: NewTransaction,
+    ) -> FieldResult<Transaction> {
+        let created_transaction =
+            services::transaction::create_transaction(&context.pool, transaction.to_service())?;
+        Ok(created_transaction.to_graphql())
     }
 }
 

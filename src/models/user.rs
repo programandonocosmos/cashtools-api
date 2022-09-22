@@ -60,6 +60,7 @@ pub enum UserModelError {
     FailedToDeleteUser(diesel::result::Error),
     FailedToCheckAvailability(diesel::result::Error),
     FailedToGetLoginCode(diesel::result::Error),
+    FailedToGetIdByEmail(diesel::result::Error),
     UserAlreadyExists,
     UserDoesNotExists,
     UserWithoutLoginCode,
@@ -131,6 +132,19 @@ pub fn get_login_code(conn: &database::DbPool, email: &str) -> Result<i32, UserM
             ..
         }] => Ok(l.clone()),
         [_u] => Err(UserModelError::UserWithoutLoginCode),
+        _ => Err(UserModelError::MoreThanOneEmailError),
+    }
+}
+
+pub fn get_id_by_email(conn: &database::DbPool, email: &str) -> Result<Uuid, UserModelError> {
+    let result = user_schema::table
+        .filter(user_schema::email.eq(email))
+        .load::<User>(&mut conn.get()?)
+        .map_err(UserModelError::FailedToGetIdByEmail)?;
+
+    match result.as_slice() {
+        [] => Err(UserModelError::UserDoesNotExists),
+        [u] => Ok(u.id),
         _ => Err(UserModelError::MoreThanOneEmailError),
     }
 }

@@ -20,25 +20,25 @@ fn graphiql() -> content::RawHtml<String> {
 }
 
 #[rocket::get("/graphql?<request>")]
-fn get_graphql_handler(
+async fn get_graphql_handler(
     context: &State<graphql_resolvers::Context>,
     request: juniper_rocket::GraphQLRequest,
     schema: &State<graphql_resolvers::Schema>,
 ) -> juniper_rocket::GraphQLResponse {
-    request.execute_sync(&*schema, &*context)
+    request.execute(&*schema, &*context).await
 }
 
 #[rocket::post("/graphql", data = "<request>")]
-fn post_graphql_handler(
+async fn post_graphql_handler(
     context: &State<graphql_resolvers::Context>,
     request: juniper_rocket::GraphQLRequest,
     schema: &State<graphql_resolvers::Schema>,
 ) -> juniper_rocket::GraphQLResponse {
-    request.execute_sync(&*schema, &*context)
+    request.execute(&*schema, &*context).await
 }
 
 #[launch]
-fn rocket() -> _ {
+async fn rocket() -> _ {
     dotenv().ok();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");

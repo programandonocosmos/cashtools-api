@@ -91,7 +91,7 @@ pub struct Query;
 
 #[graphql_object(context = Context)]
 impl Query {
-    async fn apiVersion() -> &'static str {
+    fn apiVersion() -> &'static str {
         "1.0"
     }
 
@@ -124,11 +124,11 @@ impl Mutations {
         let created_user = services::user::create_user(&context.pool, username, email)?;
         Ok(created_user.to_graphql())
     }
-    fn delete_user(context: &Context, token: String) -> FieldResult<User> {
+    async fn delete_user(context: &Context, token: String) -> FieldResult<User> {
         let user = services::user::delete_user(&context.pool, token, &context.jwt_secret)?;
         Ok(user.to_graphql())
     }
-    fn create_transaction(
+    async fn create_transaction(
         context: &Context,
         transaction: NewTransaction,
     ) -> FieldResult<Transaction> {

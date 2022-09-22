@@ -50,15 +50,18 @@ async fn rocket() -> _ {
         .merge(("port", 8080))
         .merge(("address", "0.0.0.0"));
 
+    let context = graphql_resolvers::Context { pool, jwt_secret };
+
+    let schema = graphql_resolvers::Schema::new(
+        graphql_resolvers::Query,
+        graphql_resolvers::Mutations,
+        EmptySubscription::<graphql_resolvers::Context>::new(),
+    );
+
+    let routes = rocket::routes![graphiql, get_graphql_handler, post_graphql_handler];
+
     rocket::custom(figment)
-        .manage(graphql_resolvers::Context { pool, jwt_secret })
-        .manage(graphql_resolvers::Schema::new(
-            graphql_resolvers::Query,
-            graphql_resolvers::Mutations,
-            EmptySubscription::<graphql_resolvers::Context>::new(),
-        ))
-        .mount(
-            "/",
-            rocket::routes![graphiql, get_graphql_handler, post_graphql_handler],
-        )
+        .manage(context)
+        .manage(schema)
+        .mount("/", routes)
 }

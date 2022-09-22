@@ -28,7 +28,7 @@ struct NewUser {
 }
 
 impl user_service::NewUser {
-    fn convert(&self) -> NewUser {
+    fn to_model(&self) -> NewUser {
         NewUser {
             username: self.username.clone(),
             register_date: None,
@@ -40,7 +40,7 @@ impl user_service::NewUser {
 }
 
 impl User {
-    fn convert(&self) -> user_service::User {
+    fn to_service(&self) -> user_service::User {
         user_service::User {
             id: self.id,
             username: self.username.clone(),
@@ -81,9 +81,9 @@ pub fn create_user(
 
     match (username_is_available, email_is_available) {
         (true, true) => diesel::insert_into(user_schema::table)
-            .values(&user.convert())
+            .values(&user.to_model())
             .get_result::<User>(&mut conn.get()?)
-            .map(|u| u.convert())
+            .map(|u| u.to_service())
             .map_err(UserModelError::FailedToCreateUser),
         _ => Err(UserModelError::UserAlreadyExists),
     }
@@ -95,7 +95,7 @@ pub fn delete_user(
 ) -> Result<user_service::User, UserModelError> {
     diesel::delete(user_schema::table.filter(user_schema::email.eq(email)))
         .get_result::<User>(&mut conn.get()?)
-        .map(|u| u.convert())
+        .map(|u| u.to_service())
         .map_err(UserModelError::FailedToDeleteUser)
 }
 

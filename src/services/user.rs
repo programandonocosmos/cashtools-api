@@ -6,6 +6,7 @@ use rand::Rng;
 use uuid::Uuid;
 
 use crate::jwt;
+use crate::models::transaction;
 use crate::models::user;
 use crate::sendemail::send_code;
 
@@ -14,6 +15,7 @@ use crate::database;
 #[derive(Debug)]
 pub enum UserServiceError {
     UserModelFailed(user::UserModelError),
+    TransactionModelFailed(transaction::TransactionModelError),
     JwtError(jwt::JwtError),
     LoginCodeNotMatching,
 }
@@ -27,6 +29,12 @@ impl fmt::Display for UserServiceError {
 impl From<user::UserModelError> for UserServiceError {
     fn from(error: user::UserModelError) -> Self {
         UserServiceError::UserModelFailed(error)
+    }
+}
+
+impl From<transaction::TransactionModelError> for UserServiceError {
+    fn from(error: transaction::TransactionModelError) -> Self {
+        UserServiceError::TransactionModelFailed(error)
     }
 }
 
@@ -82,6 +90,8 @@ pub fn delete_user(
     jwt_secret: &str,
 ) -> Result<User, UserServiceError> {
     let email = jwt::verify_token(&token, jwt_secret)?;
+    let id = user::get_id_by_email(conn, &email)?;
+    transaction::delete_transaction_by_user_id(conn, &id)?;
     Ok(user::delete_user(conn, email)?)
 }
 

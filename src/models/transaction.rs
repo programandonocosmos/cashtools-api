@@ -62,6 +62,7 @@ pub enum TransactionModelError {
     FailedToGetConn(r2d2::Error),
     FailedToCreateTransaction(diesel::result::Error),
     FailedToListTransactions(diesel::result::Error),
+    FailedToDeleteTransaction(diesel::result::Error),
 }
 
 impl From<r2d2::Error> for TransactionModelError {
@@ -92,4 +93,14 @@ pub fn list_user_transactions(
         .iter()
         .map(|t| t.to_service())
         .collect())
+}
+
+pub fn delete_transaction_by_user_id(
+    conn: &database::DbPool,
+    user_id: &Uuid,
+) -> Result<(), TransactionModelError> {
+    diesel::delete(transaction_schema::table.filter(transaction_schema::related_user.eq(user_id)))
+        .execute(&mut conn.get()?)
+        .map_err(TransactionModelError::FailedToDeleteTransaction)?;
+    Ok(())
 }

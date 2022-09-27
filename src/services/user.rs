@@ -44,6 +44,8 @@ impl From<jwt::JwtError> for UserServiceError {
     }
 }
 
+pub type Result<T> = std::result::Result<T, UserServiceError>;
+
 // User that will be returned when you try to get user information
 #[derive(Clone)]
 pub struct User {
@@ -65,11 +67,7 @@ pub struct NewUser {
     pub login_code: i32,
 }
 
-pub fn create_user(
-    conn: &database::DbPool,
-    username: String,
-    email: String,
-) -> Result<User, UserServiceError> {
+pub fn create_user(conn: &database::DbPool, username: String, email: String) -> Result<User> {
     let last_code_gen_request = Utc::now().naive_utc();
     // TODO: Use login_code as a String to generate a code more dificult to crack
     let mut rng = rand::thread_rng();
@@ -84,11 +82,7 @@ pub fn create_user(
     Ok(user::create_user(conn, user)?)
 }
 
-pub fn delete_user(
-    conn: &database::DbPool,
-    token: String,
-    jwt_secret: &str,
-) -> Result<User, UserServiceError> {
+pub fn delete_user(conn: &database::DbPool, token: String, jwt_secret: &str) -> Result<User> {
     let email = jwt::verify_token(&token, jwt_secret)?;
     let id = user::get_id_by_email(conn, &email)?;
     transaction::delete_transaction_by_user_id(conn, &id)?;
@@ -100,7 +94,7 @@ pub fn validate_and_generate_token(
     email: String,
     login_code: i32,
     jwt_secret: &str,
-) -> Result<String, UserServiceError> {
+) -> Result<String> {
     let real_login_code = user::get_login_code(conn, &email)?;
 
     if login_code == real_login_code {

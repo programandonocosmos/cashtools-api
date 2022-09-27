@@ -73,10 +73,12 @@ impl From<r2d2::Error> for UserModelError {
     }
 }
 
+pub type Result<T> = std::result::Result<T, UserModelError>;
+
 pub fn create_user(
     conn: &database::DbPool,
     user: user_service::NewUser,
-) -> Result<user_service::User, UserModelError> {
+) -> Result<user_service::User> {
     let username_is_available = check_if_username_available(&conn, &user.username)?;
     let email_is_available = check_if_email_available(&conn, &user.email)?;
 
@@ -90,20 +92,14 @@ pub fn create_user(
     }
 }
 
-pub fn delete_user(
-    conn: &database::DbPool,
-    email: String,
-) -> Result<user_service::User, UserModelError> {
+pub fn delete_user(conn: &database::DbPool, email: String) -> Result<user_service::User> {
     diesel::delete(user_schema::table.filter(user_schema::email.eq(email)))
         .get_result::<User>(&mut conn.get()?)
         .map(|u| u.to_service())
         .map_err(UserModelError::FailedToDeleteUser)
 }
 
-fn check_if_username_available(
-    conn: &database::DbPool,
-    username: &str,
-) -> Result<bool, UserModelError> {
+fn check_if_username_available(conn: &database::DbPool, username: &str) -> Result<bool> {
     user_schema::table
         .filter(user_schema::username.eq(username))
         .load::<User>(&mut conn.get()?)
@@ -111,7 +107,7 @@ fn check_if_username_available(
         .map_err(UserModelError::FailedToCheckAvailability)
 }
 
-fn check_if_email_available(conn: &database::DbPool, email: &str) -> Result<bool, UserModelError> {
+fn check_if_email_available(conn: &database::DbPool, email: &str) -> Result<bool> {
     user_schema::table
         .filter(user_schema::email.eq(email))
         .load::<User>(&mut conn.get()?)
@@ -119,7 +115,7 @@ fn check_if_email_available(conn: &database::DbPool, email: &str) -> Result<bool
         .map_err(UserModelError::FailedToCheckAvailability)
 }
 
-pub fn get_login_code(conn: &database::DbPool, email: &str) -> Result<i32, UserModelError> {
+pub fn get_login_code(conn: &database::DbPool, email: &str) -> Result<i32> {
     let result = user_schema::table
         .filter(user_schema::email.eq(email))
         .load::<User>(&mut conn.get()?)
@@ -136,7 +132,7 @@ pub fn get_login_code(conn: &database::DbPool, email: &str) -> Result<i32, UserM
     }
 }
 
-pub fn get_id_by_email(conn: &database::DbPool, email: &str) -> Result<Uuid, UserModelError> {
+pub fn get_id_by_email(conn: &database::DbPool, email: &str) -> Result<Uuid> {
     let result = user_schema::table
         .filter(user_schema::email.eq(email))
         .load::<User>(&mut conn.get()?)

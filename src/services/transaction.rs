@@ -63,12 +63,14 @@ impl From<jwt::JwtError> for TransactionServiceError {
     }
 }
 
+pub type Result<T> = std::result::Result<T, TransactionServiceError>;
+
 pub fn create_transaction(
     conn: &database::DbPool,
     token: &str,
     jwt_secret: &str,
     new_transaction: NewTransaction,
-) -> Result<Transaction, TransactionServiceError> {
+) -> Result<Transaction> {
     let email = jwt::verify_token(token, jwt_secret)?;
     let id = user::get_id_by_email(conn, &email)?;
     let transaction_with_related_user = NewTransactionWithRelatedUser {
@@ -89,7 +91,7 @@ pub fn list_user_transactions(
     conn: &database::DbPool,
     token: &str,
     jwt_secret: &str,
-) -> Result<Vec<Transaction>, TransactionServiceError> {
+) -> Result<Vec<Transaction>> {
     let email = jwt::verify_token(token, jwt_secret)?;
     let id = user::get_id_by_email(conn, &email)?;
     Ok(transaction::list_user_transactions(conn, &id)?)

@@ -71,10 +71,12 @@ impl From<r2d2::Error> for TransactionModelError {
     }
 }
 
+pub type Result<T> = std::result::Result<T, TransactionModelError>;
+
 pub fn create_transaction(
     conn: &database::DbPool,
     t: transaction_service::NewTransactionWithRelatedUser,
-) -> Result<transaction_service::Transaction, TransactionModelError> {
+) -> Result<transaction_service::Transaction> {
     diesel::insert_into(transaction_schema::table)
         .values(&t.to_model())
         .get_result::<Transaction>(&mut conn.get()?)
@@ -85,7 +87,7 @@ pub fn create_transaction(
 pub fn list_user_transactions(
     conn: &database::DbPool,
     user_id: &Uuid,
-) -> Result<Vec<transaction_service::Transaction>, TransactionModelError> {
+) -> Result<Vec<transaction_service::Transaction>> {
     Ok(transaction_schema::table
         .filter(transaction_schema::related_user.eq(user_id))
         .load::<Transaction>(&mut conn.get()?)
@@ -95,10 +97,7 @@ pub fn list_user_transactions(
         .collect())
 }
 
-pub fn delete_transaction_by_user_id(
-    conn: &database::DbPool,
-    user_id: &Uuid,
-) -> Result<(), TransactionModelError> {
+pub fn delete_transaction_by_user_id(conn: &database::DbPool, user_id: &Uuid) -> Result<()> {
     diesel::delete(transaction_schema::table.filter(transaction_schema::related_user.eq(user_id)))
         .execute(&mut conn.get()?)
         .map_err(TransactionModelError::FailedToDeleteTransaction)?;

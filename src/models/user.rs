@@ -15,13 +15,15 @@ struct User {
     last_code_gen_request: Option<NaiveDateTime>,
     login_code: Option<i32>,
     is_registered: bool,
+    name: String,
+    payday: Option<i32>,
 }
 
 #[derive(Insertable, Clone)]
 #[diesel(table_name = user_schema)]
 struct NewUser {
+    name: String,
     username: String,
-    register_date: Option<NaiveDateTime>,
     email: String,
     last_code_gen_request: Option<NaiveDateTime>,
     login_code: Option<i32>,
@@ -30,8 +32,8 @@ struct NewUser {
 impl user_service::NewUser {
     fn to_model(&self) -> NewUser {
         NewUser {
+            name: self.name.clone(),
             username: self.username.clone(),
-            register_date: None,
             email: self.email.clone(),
             last_code_gen_request: Some(self.last_code_gen_request),
             login_code: Some(self.login_code),
@@ -43,12 +45,14 @@ impl User {
     fn to_service(&self) -> user_service::User {
         user_service::User {
             id: self.id,
+            name: self.name.clone(),
             username: self.username.clone(),
             register_date: self.register_date,
             email: self.email.clone(),
             last_code_gen_request: self.last_code_gen_request,
             login_code: self.login_code,
             is_registered: self.is_registered,
+            payday: self.payday,
         }
     }
 }

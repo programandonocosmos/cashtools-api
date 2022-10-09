@@ -49,11 +49,11 @@ impl services::user::User {
         User {
             id: self.id,
             username: self.username.clone(),
-            name: "".to_string(),
+            name: self.name.clone(),
             email: self.email.clone(),
             // TODO: Remove mocked fields
             integrations: Vec::new(),
-            payday: None,
+            payday: self.payday,
         }
     }
 }
@@ -131,7 +131,7 @@ impl Mutations {
         name: String,
         email: String,
     ) -> FieldResult<User> {
-        let created_user = services::user::create_user(&context.pool, username, email)?;
+        let created_user = services::user::create_user(&context.pool, &username, &name, &email)?;
         Ok(created_user.to_graphql())
     }
     async fn delete_user(context: &Context, token: String) -> FieldResult<User> {

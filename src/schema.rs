@@ -21,10 +21,9 @@ diesel::table! {
         last_code_gen_request -> Nullable<Timestamp>,
         login_code -> Nullable<Int4>,
         is_registered -> Bool,
+        name -> Text,
+        payday -> Nullable<Int4>,
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(
-    transactions,
-    users,
-);
+diesel::allow_tables_to_appear_in_same_query!(transactions, users,);

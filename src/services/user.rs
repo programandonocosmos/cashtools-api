@@ -91,11 +91,17 @@ pub fn create_user(
     Ok(user::create_user(conn, user)?)
 }
 
-pub fn delete_user(conn: &database::DbPool, token: String, jwt_secret: &str) -> Result<User> {
-    let email = jwt::verify_token(&token, jwt_secret)?;
+pub fn delete_user(conn: &database::DbPool, token: &str, jwt_secret: &str) -> Result<User> {
+    let email = jwt::verify_token(token, jwt_secret)?;
     let id = user::get_id_by_email(conn, &email)?;
     transaction::delete_transaction_by_user_id(conn, &id)?;
     Ok(user::delete_user(conn, email)?)
+}
+
+pub fn get_user(conn: &database::DbPool, token: &str, jwt_secret: &str) -> Result<User> {
+    let email = jwt::verify_token(token, jwt_secret)?;
+    let id = user::get_id_by_email(conn, &email)?;
+    Ok(user::get_user(conn, id)?)
 }
 
 pub fn validate_and_generate_token(

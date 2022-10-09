@@ -62,6 +62,7 @@ pub enum UserModelError {
     FailedToGetConn(r2d2::Error),
     FailedToCreateUser(diesel::result::Error),
     FailedToDeleteUser(diesel::result::Error),
+    FailedToGetUserById(diesel::result::Error),
     FailedToCheckAvailability(diesel::result::Error),
     FailedToGetLoginCode(diesel::result::Error),
     FailedToGetIdByEmail(diesel::result::Error),
@@ -69,6 +70,7 @@ pub enum UserModelError {
     UserDoesNotExists,
     UserWithoutLoginCode,
     MoreThanOneEmailError,
+    MoreThanOneIdError,
 }
 
 impl From<r2d2::Error> for UserModelError {
@@ -101,6 +103,19 @@ pub fn delete_user(conn: &database::DbPool, email: String) -> Result<user_servic
         .get_result::<User>(&mut conn.get()?)
         .map(|u| u.to_service())
         .map_err(UserModelError::FailedToDeleteUser)
+}
+
+pub fn get_user(conn: &database::DbPool, id: Uuid) -> Result<user_service::User> {
+    let users = user_schema::table
+        .filter(user_schema::id.eq(id))
+        .load::<User>(&mut conn.get()?)
+        .map_err(UserModelError::FailedToGetUserById)?;
+
+    match users.as_slice() {
+        [] => Err(UserModelError::UserDoesNotExists),
+        [u] => Ok(u.to_service()),
+        _ => Err(UserModelError::MoreThanOneIdError),
+    }
 }
 
 fn check_if_username_available(conn: &database::DbPool, username: &str) -> Result<bool> {

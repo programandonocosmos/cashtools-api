@@ -110,6 +110,11 @@ impl Query {
         Ok(transactions)
     }
 
+    async fn me(context: &Context, token: String) -> FieldResult<User> {
+        let user = services::user::get_user(&context.pool, &token, &context.jwt_secret)?;
+        Ok(user.to_graphql())
+    }
+
     async fn token(context: &Context, email: String, login_code: i32) -> FieldResult<String> {
         let token = services::user::validate_and_generate_token(
             &context.pool,
@@ -135,7 +140,7 @@ impl Mutations {
         Ok(created_user.to_graphql())
     }
     async fn delete_user(context: &Context, token: String) -> FieldResult<User> {
-        let user = services::user::delete_user(&context.pool, token, &context.jwt_secret)?;
+        let user = services::user::delete_user(&context.pool, &token, &context.jwt_secret)?;
         Ok(user.to_graphql())
     }
     async fn create_transaction(

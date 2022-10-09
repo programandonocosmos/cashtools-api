@@ -5,16 +5,21 @@ use uuid::Uuid;
 use crate::database;
 use crate::services;
 
+#[derive(GraphQLObject, Clone)]
+pub struct Integration {
+    name: String,
+    time: NaiveDateTime,
+}
+
 // A Cashtools user.
 #[derive(GraphQLObject, Clone)]
 pub struct User {
     id: Uuid,
     username: String,
-    register_date: Option<NaiveDateTime>,
+    name: String,
     email: String,
-    last_code_gen_request: Option<NaiveDateTime>,
-    login_code: Option<i32>,
-    is_registered: bool,
+    integrations: Vec<Integration>,
+    payday: Option<i32>,
 }
 
 // A simple transaction.
@@ -44,11 +49,11 @@ impl services::user::User {
         User {
             id: self.id,
             username: self.username.clone(),
-            register_date: self.register_date,
+            name: "".to_string(),
             email: self.email.clone(),
-            last_code_gen_request: self.last_code_gen_request,
-            login_code: self.login_code,
-            is_registered: self.is_registered,
+            // TODO: Remove mocked fields
+            integrations: Vec::new(),
+            payday: None,
         }
     }
 }
@@ -120,7 +125,12 @@ pub struct Mutations;
 
 #[graphql_object(context = Context)]
 impl Mutations {
-    async fn create_user(context: &Context, username: String, email: String) -> FieldResult<User> {
+    async fn create_user(
+        context: &Context,
+        username: String,
+        name: String,
+        email: String,
+    ) -> FieldResult<User> {
         let created_user = services::user::create_user(&context.pool, username, email)?;
         Ok(created_user.to_graphql())
     }

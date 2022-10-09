@@ -50,32 +50,41 @@ pub type Result<T> = std::result::Result<T, UserServiceError>;
 #[derive(Clone)]
 pub struct User {
     pub id: Uuid,
+    pub name: String,
     pub username: String,
     pub register_date: Option<NaiveDateTime>,
     pub email: String,
     pub last_code_gen_request: Option<NaiveDateTime>,
     pub login_code: Option<i32>,
     pub is_registered: bool,
+    pub payday: Option<i32>,
 }
 
 // Essential information for create a new user in the database
 #[derive(Clone)]
 pub struct NewUser {
+    pub name: String,
     pub username: String,
     pub email: String,
     pub last_code_gen_request: NaiveDateTime,
     pub login_code: i32,
 }
 
-pub fn create_user(conn: &database::DbPool, username: String, email: String) -> Result<User> {
+pub fn create_user(
+    conn: &database::DbPool,
+    username: &str,
+    name: &str,
+    email: &str,
+) -> Result<User> {
     let last_code_gen_request = Utc::now().naive_utc();
     // TODO: Use login_code as a String to generate a code more dificult to crack
     let mut rng = rand::thread_rng();
     let login_code = rng.gen_range(100000..999999);
     let _ = send_code(&email, &login_code);
     let user = NewUser {
-        username,
-        email,
+        name: name.to_string(),
+        username: username.to_string(),
+        email: email.to_string(),
         last_code_gen_request,
         login_code,
     };

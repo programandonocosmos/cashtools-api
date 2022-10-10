@@ -98,8 +98,8 @@ pub fn create_user(
     }
 }
 
-pub fn delete_user(conn: &database::DbPool, email: String) -> Result<user_service::User> {
-    diesel::delete(user_schema::table.filter(user_schema::email.eq(email)))
+pub fn delete_user(conn: &database::DbPool, id: &Uuid) -> Result<user_service::User> {
+    diesel::delete(user_schema::table.filter(user_schema::id.eq(id)))
         .get_result::<User>(&mut conn.get()?)
         .map(|u| u.to_service())
         .map_err(UserModelError::FailedToDeleteUser)

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use chrono::NaiveDate;
+use chrono::{NaiveDate, Utc};
 use uuid::Uuid;
 
 use crate::{database, jwt, models::transaction, models::user};
@@ -71,8 +71,7 @@ pub fn create_transaction(
     jwt_secret: &str,
     new_transaction: NewTransaction,
 ) -> Result<Transaction> {
-    let email = jwt::verify_token(token, jwt_secret)?;
-    let id = user::get_id_by_email(conn, &email)?;
+    let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
     let transaction_with_related_user = NewTransactionWithRelatedUser {
         related_user: id,
         entry_date: new_transaction.entry_date,
@@ -92,7 +91,6 @@ pub fn list_user_transactions(
     token: &str,
     jwt_secret: &str,
 ) -> Result<Vec<Transaction>> {
-    let email = jwt::verify_token(token, jwt_secret)?;
-    let id = user::get_id_by_email(conn, &email)?;
+    let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
     Ok(transaction::list_user_transactions(conn, &id)?)
 }

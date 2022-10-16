@@ -97,3 +97,15 @@ pub fn delete_integration_by_user_id(
     .map(|t| t.to_service())
     .collect())
 }
+
+pub fn delete_integration(
+    conn: &database::DbPool,
+    id: &Uuid,
+) -> Result<user_service::UserIntegration> {
+    Ok(
+        diesel::delete(user_integration_schema::table.filter(user_integration_schema::id.eq(id)))
+            .get_result::<UserIntegration>(&mut conn.get()?)
+            .map_err(IntegrationModelError::FailedToDeleteIntegration)?
+            .to_service(),
+    )
+}

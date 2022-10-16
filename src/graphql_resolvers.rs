@@ -182,6 +182,17 @@ impl Mutations {
         )?;
         Ok(created_integration.to_graphql())
     }
+
+    async fn delete_integration(
+        context: &Context,
+        token: String,
+        id: Uuid,
+    ) -> FieldResult<Integration> {
+        let integration =
+            services::user::delete_integration(&context.pool, &token, &context.jwt_secret, id)?;
+
+        Ok(integration.to_graphql())
+    }
 }
 
 pub type Schema = juniper::RootNode<'static, Query, Mutations, EmptySubscription<Context>>;

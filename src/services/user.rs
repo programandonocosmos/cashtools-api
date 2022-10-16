@@ -200,3 +200,13 @@ pub fn create_integration(
     };
     Ok(user_integration::create_integration(conn, new_integration)?)
 }
+
+pub fn delete_integration(
+    conn: &database::DbPool,
+    token: &str,
+    jwt_secret: &str,
+    id: Uuid,
+) -> Result<UserIntegration> {
+    let _ = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
+    Ok(user_integration::delete_integration(conn, &id)?)
+}

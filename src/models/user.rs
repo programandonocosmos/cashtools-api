@@ -25,8 +25,6 @@ struct NewUser {
     name: String,
     username: String,
     email: String,
-    last_code_gen_request: Option<NaiveDateTime>,
-    login_code: Option<i32>,
 }
 
 impl user_service::NewUser {
@@ -35,8 +33,6 @@ impl user_service::NewUser {
             name: self.name.clone(),
             username: self.username.clone(),
             email: self.email.clone(),
-            last_code_gen_request: Some(self.last_code_gen_request),
-            login_code: Some(self.login_code),
         }
     }
 }
@@ -66,6 +62,7 @@ pub enum UserModelError {
     FailedToCheckAvailability(diesel::result::Error),
     FailedToGetLoginCode(diesel::result::Error),
     FailedToGetIdByEmail(diesel::result::Error),
+    FailedToUpdateLoginCode(diesel::result::Error),
     UserAlreadyExists,
     UserDoesNotExists,
     UserWithoutLoginCode,
@@ -132,6 +129,22 @@ fn check_if_email_available(conn: &database::DbPool, email: &str) -> Result<bool
         .load::<User>(&mut conn.get()?)
         .map(|v| v.is_empty())
         .map_err(UserModelError::FailedToCheckAvailability)
+}
+
+pub fn refresh_login_code(
+    conn: &database::DbPool,
+    email: &str,
+    login_code: i32,
+    time: NaiveDateTime,
+) -> Result<()> {
+    let _ = diesel::update(user_schema::table.filter(user_schema::email.eq(email)))
+        .set((
+            user_schema::login_code.eq(login_code),
+            user_schema::last_code_gen_request.eq(time),
+        ))
+        .get_result::<User>(&mut conn.get()?)
+        .map_err(UserModelError::FailedToUpdateLoginCode)?;
+    Ok(())
 }
 
 pub fn get_login_code(conn: &database::DbPool, email: &str) -> Result<i32> {

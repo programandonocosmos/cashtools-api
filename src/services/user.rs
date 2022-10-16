@@ -104,8 +104,6 @@ pub struct NewUser {
     pub name: String,
     pub username: String,
     pub email: String,
-    pub last_code_gen_request: NaiveDateTime,
-    pub login_code: i32,
 }
 
 #[derive(Clone)]
@@ -129,19 +127,25 @@ pub fn create_user(
     name: &str,
     email: &str,
 ) -> Result<UserWithIntegrations> {
+    let new_user = NewUser {
+        name: name.to_string(),
+        username: username.to_string(),
+        email: email.to_string(),
+    };
+    let user = user::create_user(conn, new_user)?.with_integrations(Vec::new());
+    refresh_login_code(conn, email)?;
+
+    Ok(user)
+}
+
+pub fn refresh_login_code(conn: &database::DbPool, email: &str) -> Result<()> {
     let last_code_gen_request = Utc::now().naive_utc();
     // TODO: Use login_code as a String to generate a code more dificult to crack
     let mut rng = rand::thread_rng();
     let login_code = rng.gen_range(100000..999999);
-    let _ = send_code(&email, &login_code);
-    let user = NewUser {
-        name: name.to_string(),
-        username: username.to_string(),
-        email: email.to_string(),
-        last_code_gen_request,
-        login_code,
-    };
-    Ok(user::create_user(conn, user)?.with_integrations(Vec::new()))
+    send_code(&email, &login_code);
+    user::refresh_login_code(conn, email, login_code, last_code_gen_request)?;
+    Ok(())
 }
 
 pub fn delete_user(

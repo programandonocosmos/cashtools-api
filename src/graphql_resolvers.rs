@@ -7,6 +7,7 @@ use crate::services;
 
 #[derive(GraphQLObject, Clone)]
 pub struct Integration {
+    id: Uuid,
     name: String,
     time: NaiveDateTime,
 }
@@ -47,6 +48,7 @@ struct NewTransaction {
 impl services::user::UserIntegration {
     fn to_graphql(&self) -> Integration {
         Integration {
+            id: self.id,
             name: self.name.clone(),
             time: self.time,
         }
@@ -163,6 +165,22 @@ impl Mutations {
             transaction.to_service(),
         )?;
         Ok(created_transaction.to_graphql())
+    }
+
+    async fn create_integration(
+        context: &Context,
+        token: String,
+        name: String,
+        time: NaiveDateTime,
+    ) -> FieldResult<Integration> {
+        let created_integration = services::user::create_integration(
+            &context.pool,
+            &token,
+            &context.jwt_secret,
+            name,
+            time,
+        )?;
+        Ok(created_integration.to_graphql())
     }
 }
 

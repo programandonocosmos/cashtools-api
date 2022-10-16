@@ -184,3 +184,19 @@ pub fn validate_and_generate_token(
         Err(UserServiceError::LoginCodeNotMatching)
     }
 }
+
+pub fn create_integration(
+    conn: &database::DbPool,
+    token: &str,
+    jwt_secret: &str,
+    name: String,
+    time: NaiveDateTime,
+) -> Result<UserIntegration> {
+    let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
+    let new_integration = NewUserIntegration {
+        related_user: id,
+        name,
+        time,
+    };
+    Ok(user_integration::create_integration(conn, new_integration)?)
+}

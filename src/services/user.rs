@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::jwt;
 use crate::models::transaction;
 use crate::models::user;
+use crate::models::user_integration;
 use crate::sendemail::send_code;
 
 use crate::database;
@@ -16,6 +17,7 @@ use crate::database;
 pub enum UserServiceError {
     UserModelFailed(user::UserModelError),
     TransactionModelFailed(transaction::TransactionModelError),
+    UserIntegrationModelFailed(user_integration::IntegrationModelError),
     JwtError(jwt::JwtError),
     LoginCodeNotMatching,
 }
@@ -35,6 +37,12 @@ impl From<user::UserModelError> for UserServiceError {
 impl From<transaction::TransactionModelError> for UserServiceError {
     fn from(error: transaction::TransactionModelError) -> Self {
         UserServiceError::TransactionModelFailed(error)
+    }
+}
+
+impl From<user_integration::IntegrationModelError> for UserServiceError {
+    fn from(error: user_integration::IntegrationModelError) -> Self {
+        UserServiceError::UserIntegrationModelFailed(error)
     }
 }
 
@@ -60,6 +68,36 @@ pub struct User {
     pub payday: Option<i32>,
 }
 
+pub struct UserWithIntegrations {
+    pub id: Uuid,
+    pub name: String,
+    pub username: String,
+    pub register_date: Option<NaiveDateTime>,
+    pub email: String,
+    pub last_code_gen_request: Option<NaiveDateTime>,
+    pub login_code: Option<i32>,
+    pub is_registered: bool,
+    pub payday: Option<i32>,
+    pub integrations: Vec<UserIntegration>,
+}
+
+impl User {
+    fn with_integrations(&self, integrations: Vec<UserIntegration>) -> UserWithIntegrations {
+        UserWithIntegrations {
+            id: self.id,
+            name: self.name.clone(),
+            username: self.username.clone(),
+            register_date: self.register_date,
+            email: self.email.clone(),
+            last_code_gen_request: self.last_code_gen_request,
+            login_code: self.login_code,
+            is_registered: self.is_registered,
+            payday: self.payday,
+            integrations,
+        }
+    }
+}
+
 // Essential information for create a new user in the database
 #[derive(Clone)]
 pub struct NewUser {
@@ -70,12 +108,27 @@ pub struct NewUser {
     pub login_code: i32,
 }
 
+#[derive(Clone)]
+pub struct UserIntegration {
+    pub id: Uuid,
+    pub related_user: Uuid,
+    pub name: String,
+    pub time: NaiveDateTime,
+}
+
+#[derive(Clone)]
+pub struct NewUserIntegration {
+    pub related_user: Uuid,
+    pub name: String,
+    pub time: NaiveDateTime,
+}
+
 pub fn create_user(
     conn: &database::DbPool,
     username: &str,
     name: &str,
     email: &str,
-) -> Result<User> {
+) -> Result<UserWithIntegrations> {
     let last_code_gen_request = Utc::now().naive_utc();
     // TODO: Use login_code as a String to generate a code more dificult to crack
     let mut rng = rand::thread_rng();
@@ -88,18 +141,28 @@ pub fn create_user(
         last_code_gen_request,
         login_code,
     };
-    Ok(user::create_user(conn, user)?)
+    Ok(user::create_user(conn, user)?.with_integrations(Vec::new()))
 }
 
-pub fn delete_user(conn: &database::DbPool, token: &str, jwt_secret: &str) -> Result<User> {
+pub fn delete_user(
+    conn: &database::DbPool,
+    token: &str,
+    jwt_secret: &str,
+) -> Result<UserWithIntegrations> {
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
     transaction::delete_transaction_by_user_id(conn, &id)?;
-    Ok(user::delete_user(conn, &id)?)
+    let integrations = user_integration::delete_integration_by_user_id(conn, &id)?;
+    Ok(user::delete_user(conn, &id)?.with_integrations(integrations))
 }
 
-pub fn get_user(conn: &database::DbPool, token: &str, jwt_secret: &str) -> Result<User> {
+pub fn get_user(
+    conn: &database::DbPool,
+    token: &str,
+    jwt_secret: &str,
+) -> Result<UserWithIntegrations> {
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
-    Ok(user::get_user(conn, id)?)
+    let integrations = user_integration::list_user_integrations(conn, &id)?;
+    Ok(user::get_user(conn, id)?.with_integrations(integrations))
 }
 
 pub fn validate_and_generate_token(

@@ -44,15 +44,23 @@ struct NewTransaction {
     description: Option<String>,
 }
 
-impl services::user::User {
+impl services::user::UserIntegration {
+    fn to_graphql(&self) -> Integration {
+        Integration {
+            name: self.name.clone(),
+            time: self.time,
+        }
+    }
+}
+
+impl services::user::UserWithIntegrations {
     fn to_graphql(&self) -> User {
         User {
             id: self.id,
             username: self.username.clone(),
             name: self.name.clone(),
             email: self.email.clone(),
-            // TODO: Remove mocked fields
-            integrations: Vec::new(),
+            integrations: self.integrations.iter().map(|t| t.to_graphql()).collect(),
             payday: self.payday,
         }
     }

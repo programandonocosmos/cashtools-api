@@ -149,6 +149,12 @@ impl Mutations {
         let created_user = services::user::create_user(&context.pool, &username, &name, &email)?;
         Ok(created_user.to_graphql())
     }
+
+    async fn send_login_code(context: &Context, email: String) -> FieldResult<String> {
+        services::user::refresh_login_code(&context.pool, &email)?;
+        Ok(email)
+    }
+
     async fn delete_user(context: &Context, token: String) -> FieldResult<User> {
         let user = services::user::delete_user(&context.pool, &token, &context.jwt_secret)?;
         Ok(user.to_graphql())

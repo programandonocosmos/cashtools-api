@@ -13,6 +13,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    user_integrations (id) {
+        id -> Uuid,
+        related_user -> Uuid,
+        name -> Text,
+        time -> Timestamp,
+    }
+}
+
+diesel::table! {
     users (id) {
         id -> Uuid,
         username -> Text,
@@ -26,4 +35,8 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(transactions, users,);
+diesel::allow_tables_to_appear_in_same_query!(
+    transactions,
+    user_integrations,
+    users,
+);

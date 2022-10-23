@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use r2d2;
 use uuid::Uuid;
 
-use crate::{database, schema::users as user_schema, services::user as user_service};
+use crate::{database, entities::user, schema::users as user_schema};
 
 #[derive(Queryable, Clone)]
 #[diesel(table_name = user_schema)]
@@ -27,7 +27,7 @@ struct NewUser {
     email: String,
 }
 
-impl user_service::NewUser {
+impl user::NewUser {
     fn to_model(&self) -> NewUser {
         NewUser {
             name: self.name.clone(),
@@ -38,8 +38,8 @@ impl user_service::NewUser {
 }
 
 impl User {
-    fn to_service(&self) -> user_service::User {
-        user_service::User {
+    fn to_entity(&self) -> user::User {
+        user::User {
             id: self.id,
             name: self.name.clone(),
             username: self.username.clone(),
@@ -78,10 +78,7 @@ impl From<r2d2::Error> for UserModelError {
 
 pub type Result<T> = std::result::Result<T, UserModelError>;
 
-pub fn create_user(
-    conn: &database::DbPool,
-    user: user_service::NewUser,
-) -> Result<user_service::User> {
+pub fn create_user(conn: &database::DbPool, user: user::NewUser) -> Result<user::User> {
     let username_is_available = check_if_username_available(&conn, &user.username)?;
     let email_is_available = check_if_email_available(&conn, &user.email)?;
 
@@ -89,20 +86,20 @@ pub fn create_user(
         (true, true) => diesel::insert_into(user_schema::table)
             .values(&user.to_model())
             .get_result::<User>(&mut conn.get()?)
-            .map(|u| u.to_service())
+            .map(|u| u.to_entity())
             .map_err(UserModelError::FailedToCreateUser),
         _ => Err(UserModelError::UserAlreadyExists),
     }
 }
 
-pub fn delete_user(conn: &database::DbPool, id: &Uuid) -> Result<user_service::User> {
+pub fn delete_user(conn: &database::DbPool, id: &Uuid) -> Result<user::User> {
     diesel::delete(user_schema::table.filter(user_schema::id.eq(id)))
         .get_result::<User>(&mut conn.get()?)
-        .map(|u| u.to_service())
+        .map(|u| u.to_entity())
         .map_err(UserModelError::FailedToDeleteUser)
 }
 
-pub fn get_user(conn: &database::DbPool, id: Uuid) -> Result<user_service::User> {
+pub fn get_user(conn: &database::DbPool, id: Uuid) -> Result<user::User> {
     let users = user_schema::table
         .filter(user_schema::id.eq(id))
         .load::<User>(&mut conn.get()?)
@@ -110,7 +107,7 @@ pub fn get_user(conn: &database::DbPool, id: Uuid) -> Result<user_service::User>
 
     match users.as_slice() {
         [] => Err(UserModelError::UserDoesNotExists),
-        [u] => Ok(u.to_service()),
+        [u] => Ok(u.to_entity()),
         _ => Err(UserModelError::MoreThanOneIdError),
     }
 }

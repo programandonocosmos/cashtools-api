@@ -2,10 +2,7 @@ use chrono::NaiveDate;
 use diesel::prelude::*;
 use uuid::Uuid;
 
-use crate::{
-    database, schema::transactions as transaction_schema,
-    services::transaction as transaction_service,
-};
+use crate::{database, entities::transaction, schema::transactions as transaction_schema};
 
 #[derive(Queryable, Clone)]
 #[diesel(table_name = transaction_schema)]
@@ -30,7 +27,7 @@ struct NewTransaction {
     description: Option<String>,
 }
 
-impl transaction_service::NewTransactionWithRelatedUser {
+impl transaction::NewTransactionWithRelatedUser {
     fn to_model(&self) -> NewTransaction {
         NewTransaction {
             related_user: self.related_user,
@@ -44,8 +41,8 @@ impl transaction_service::NewTransactionWithRelatedUser {
 }
 
 impl Transaction {
-    fn to_service(&self) -> transaction_service::Transaction {
-        transaction_service::Transaction {
+    fn to_entity(&self) -> transaction::Transaction {
+        transaction::Transaction {
             id: self.id,
             related_user: self.related_user,
             entry_date: self.entry_date,
@@ -75,25 +72,25 @@ pub type Result<T> = std::result::Result<T, TransactionModelError>;
 
 pub fn create_transaction(
     conn: &database::DbPool,
-    t: transaction_service::NewTransactionWithRelatedUser,
-) -> Result<transaction_service::Transaction> {
+    t: transaction::NewTransactionWithRelatedUser,
+) -> Result<transaction::Transaction> {
     diesel::insert_into(transaction_schema::table)
         .values(&t.to_model())
         .get_result::<Transaction>(&mut conn.get()?)
-        .map(|t| t.to_service())
+        .map(|t| t.to_entity())
         .map_err(TransactionModelError::FailedToCreateTransaction)
 }
 
 pub fn list_user_transactions(
     conn: &database::DbPool,
     user_id: &Uuid,
-) -> Result<Vec<transaction_service::Transaction>> {
+) -> Result<Vec<transaction::Transaction>> {
     Ok(transaction_schema::table
         .filter(transaction_schema::related_user.eq(user_id))
         .load::<Transaction>(&mut conn.get()?)
         .map_err(TransactionModelError::FailedToListTransactions)?
         .iter()
-        .map(|t| t.to_service())
+        .map(|t| t.to_entity())
         .collect())
 }
 

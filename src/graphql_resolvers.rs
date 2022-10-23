@@ -3,6 +3,7 @@ use juniper::{graphql_object, EmptySubscription, FieldResult, GraphQLInputObject
 use uuid::Uuid;
 
 use crate::database;
+use crate::entities;
 use crate::services;
 
 #[derive(GraphQLObject, Clone)]
@@ -45,7 +46,7 @@ struct NewTransaction {
     description: Option<String>,
 }
 
-impl services::user::UserIntegration {
+impl entities::user::UserIntegration {
     fn to_graphql(&self) -> Integration {
         Integration {
             id: self.id,
@@ -55,7 +56,7 @@ impl services::user::UserIntegration {
     }
 }
 
-impl services::user::UserWithIntegrations {
+impl entities::user::UserWithIntegrations {
     fn to_graphql(&self) -> User {
         User {
             id: self.id,
@@ -68,7 +69,7 @@ impl services::user::UserWithIntegrations {
     }
 }
 
-impl services::transaction::Transaction {
+impl entities::transaction::Transaction {
     fn to_graphql(&self) -> Transaction {
         Transaction {
             id: self.id,
@@ -83,8 +84,8 @@ impl services::transaction::Transaction {
 }
 
 impl NewTransaction {
-    fn to_service(&self) -> services::transaction::NewTransaction {
-        services::transaction::NewTransaction {
+    fn to_entity(&self) -> entities::transaction::NewTransaction {
+        entities::transaction::NewTransaction {
             entry_date: self.entry_date,
             entry_account_code: self.entry_account_code.clone(),
             exit_account_code: self.exit_account_code.clone(),
@@ -168,7 +169,7 @@ impl Mutations {
             &context.pool,
             &token,
             &context.jwt_secret,
-            transaction.to_service(),
+            transaction.to_entity(),
         )?;
         Ok(created_transaction.to_graphql())
     }

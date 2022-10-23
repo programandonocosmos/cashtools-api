@@ -1,41 +1,16 @@
 use std::fmt;
 
-use chrono::{NaiveDate, Utc};
-use uuid::Uuid;
+use chrono::Utc;
 
-use crate::{database, jwt, models::transaction, models::user};
-
-pub struct Transaction {
-    pub id: Uuid,
-    pub related_user: Uuid,
-    pub entry_date: NaiveDate,
-    pub entry_account_code: Option<String>,
-    pub exit_account_code: Option<String>,
-    pub amount: f64,
-    pub description: Option<String>,
-}
-
-pub struct NewTransaction {
-    pub entry_date: NaiveDate,
-    pub entry_account_code: Option<String>,
-    pub exit_account_code: Option<String>,
-    pub amount: f64,
-    pub description: Option<String>,
-}
-
-pub struct NewTransactionWithRelatedUser {
-    pub related_user: Uuid,
-    pub entry_date: NaiveDate,
-    pub entry_account_code: Option<String>,
-    pub exit_account_code: Option<String>,
-    pub amount: f64,
-    pub description: Option<String>,
-}
+use crate::{
+    database, entities::transaction, jwt, models::transaction as transaction_model,
+    models::user as user_model,
+};
 
 #[derive(Debug)]
 pub enum TransactionServiceError {
-    TransactionModelFailed(transaction::TransactionModelError),
-    UserModelFailed(user::UserModelError),
+    TransactionModelFailed(transaction_model::TransactionModelError),
+    UserModelFailed(user_model::UserModelError),
     JwtError(jwt::JwtError),
 }
 
@@ -45,14 +20,14 @@ impl fmt::Display for TransactionServiceError {
     }
 }
 
-impl From<transaction::TransactionModelError> for TransactionServiceError {
-    fn from(error: transaction::TransactionModelError) -> Self {
+impl From<transaction_model::TransactionModelError> for TransactionServiceError {
+    fn from(error: transaction_model::TransactionModelError) -> Self {
         TransactionServiceError::TransactionModelFailed(error)
     }
 }
 
-impl From<user::UserModelError> for TransactionServiceError {
-    fn from(error: user::UserModelError) -> Self {
+impl From<user_model::UserModelError> for TransactionServiceError {
+    fn from(error: user_model::UserModelError) -> Self {
         TransactionServiceError::UserModelFailed(error)
     }
 }
@@ -69,10 +44,10 @@ pub fn create_transaction(
     conn: &database::DbPool,
     token: &str,
     jwt_secret: &str,
-    new_transaction: NewTransaction,
-) -> Result<Transaction> {
+    new_transaction: transaction::NewTransaction,
+) -> Result<transaction::Transaction> {
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
-    let transaction_with_related_user = NewTransactionWithRelatedUser {
+    let transaction_with_related_user = transaction::NewTransactionWithRelatedUser {
         related_user: id,
         entry_date: new_transaction.entry_date,
         entry_account_code: new_transaction.entry_account_code,
@@ -80,7 +55,7 @@ pub fn create_transaction(
         amount: new_transaction.amount,
         description: new_transaction.description,
     };
-    Ok(transaction::create_transaction(
+    Ok(transaction_model::create_transaction(
         conn,
         transaction_with_related_user,
     )?)
@@ -90,7 +65,7 @@ pub fn list_user_transactions(
     conn: &database::DbPool,
     token: &str,
     jwt_secret: &str,
-) -> Result<Vec<Transaction>> {
+) -> Result<Vec<transaction::Transaction>> {
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
-    Ok(transaction::list_user_transactions(conn, &id)?)
+    Ok(transaction_model::list_user_transactions(conn, &id)?)
 }

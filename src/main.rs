@@ -8,6 +8,7 @@ use std::env;
 extern crate rocket;
 
 mod database;
+mod entities;
 mod graphql_resolvers;
 mod jwt;
 mod models;

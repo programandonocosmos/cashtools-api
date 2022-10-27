@@ -1,6 +1,7 @@
 use std::fmt;
 
 use chrono::Utc;
+use uuid::Uuid;
 
 use crate::{
     database, entities::transaction, jwt, models::transaction as transaction_model,
@@ -40,13 +41,21 @@ impl From<jwt::JwtError> for TransactionServiceError {
 
 pub type Result<T> = std::result::Result<T, TransactionServiceError>;
 
-pub fn create_transaction(
+pub fn auth_and_create_transaction(
     conn: &database::DbPool,
     token: &str,
     jwt_secret: &str,
     new_transaction: transaction::NewTransaction,
 ) -> Result<transaction::Transaction> {
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
+    create_transaction(conn, id, new_transaction)
+}
+
+fn create_transaction(
+    conn: &database::DbPool,
+    id: Uuid,
+    new_transaction: transaction::NewTransaction,
+) -> Result<transaction::Transaction> {
     let transaction_with_related_user = transaction::NewTransactionWithRelatedUser {
         related_user: id,
         entry_date: new_transaction.entry_date,
@@ -61,7 +70,7 @@ pub fn create_transaction(
     )?)
 }
 
-pub fn list_user_transactions(
+pub fn auth_and_list_user_transactions(
     conn: &database::DbPool,
     token: &str,
     jwt_secret: &str,

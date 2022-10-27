@@ -79,23 +79,31 @@ pub fn refresh_login_code(conn: &database::DbPool, email: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn delete_user(
+pub fn auth_and_delete_user(
     conn: &database::DbPool,
     token: &str,
     jwt_secret: &str,
 ) -> Result<user::UserWithIntegrations> {
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
+    delete_user(conn, id)
+}
+
+fn delete_user(conn: &database::DbPool, id: Uuid) -> Result<user::UserWithIntegrations> {
     transaction_model::delete_transaction_by_user_id(conn, &id)?;
     let integrations = user_integration_model::delete_integration_by_user_id(conn, &id)?;
     Ok(user_model::delete_user(conn, &id)?.with_integrations(integrations))
 }
 
-pub fn get_user(
+pub fn auth_and_get_user(
     conn: &database::DbPool,
     token: &str,
     jwt_secret: &str,
 ) -> Result<user::UserWithIntegrations> {
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
+    get_user(conn, id)
+}
+
+fn get_user(conn: &database::DbPool, id: Uuid) -> Result<user::UserWithIntegrations> {
     let integrations = user_integration_model::list_user_integrations(conn, &id)?;
     Ok(user_model::get_user(conn, id)?.with_integrations(integrations))
 }
@@ -120,7 +128,7 @@ pub fn validate_and_generate_token(
     }
 }
 
-pub fn create_integration(
+pub fn auth_and_create_integration(
     conn: &database::DbPool,
     token: &str,
     jwt_secret: &str,
@@ -128,6 +136,15 @@ pub fn create_integration(
     time: NaiveDateTime,
 ) -> Result<user::UserIntegration> {
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
+    create_integration(conn, id, name, time)
+}
+
+fn create_integration(
+    conn: &database::DbPool,
+    id: Uuid,
+    name: String,
+    time: NaiveDateTime,
+) -> Result<user::UserIntegration> {
     let new_integration = user::NewUserIntegration {
         related_user: id,
         name,
@@ -139,7 +156,7 @@ pub fn create_integration(
     )?)
 }
 
-pub fn delete_integration(
+pub fn auth_and_delete_integration(
     conn: &database::DbPool,
     token: &str,
     jwt_secret: &str,

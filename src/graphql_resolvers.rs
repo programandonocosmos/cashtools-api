@@ -110,7 +110,7 @@ impl Query {
     }
 
     async fn transactions(context: &Context, token: String) -> FieldResult<Vec<Transaction>> {
-        let transactions = services::transaction::list_user_transactions(
+        let transactions = services::transaction::auth_and_list_user_transactions(
             &context.pool,
             &token,
             &context.jwt_secret,
@@ -122,7 +122,7 @@ impl Query {
     }
 
     async fn me(context: &Context, token: String) -> FieldResult<User> {
-        let user = services::user::get_user(&context.pool, &token, &context.jwt_secret)?;
+        let user = services::user::auth_and_get_user(&context.pool, &token, &context.jwt_secret)?;
         Ok(user.to_graphql())
     }
 
@@ -157,7 +157,8 @@ impl Mutations {
     }
 
     async fn delete_user(context: &Context, token: String) -> FieldResult<User> {
-        let user = services::user::delete_user(&context.pool, &token, &context.jwt_secret)?;
+        let user =
+            services::user::auth_and_delete_user(&context.pool, &token, &context.jwt_secret)?;
         Ok(user.to_graphql())
     }
     async fn create_transaction(
@@ -165,7 +166,7 @@ impl Mutations {
         token: String,
         transaction: NewTransaction,
     ) -> FieldResult<Transaction> {
-        let created_transaction = services::transaction::create_transaction(
+        let created_transaction = services::transaction::auth_and_create_transaction(
             &context.pool,
             &token,
             &context.jwt_secret,
@@ -180,7 +181,7 @@ impl Mutations {
         name: String,
         time: NaiveDateTime,
     ) -> FieldResult<Integration> {
-        let created_integration = services::user::create_integration(
+        let created_integration = services::user::auth_and_create_integration(
             &context.pool,
             &token,
             &context.jwt_secret,
@@ -195,8 +196,12 @@ impl Mutations {
         token: String,
         id: Uuid,
     ) -> FieldResult<Integration> {
-        let integration =
-            services::user::delete_integration(&context.pool, &token, &context.jwt_secret, id)?;
+        let integration = services::user::auth_and_delete_integration(
+            &context.pool,
+            &token,
+            &context.jwt_secret,
+            id,
+        )?;
 
         Ok(integration.to_graphql())
     }

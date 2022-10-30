@@ -1,10 +1,18 @@
 use chrono::{NaiveDate, NaiveDateTime};
-use juniper::{graphql_object, EmptySubscription, FieldResult, GraphQLInputObject, GraphQLObject};
+use juniper::{
+    graphql_object, EmptySubscription, FieldResult, GraphQLEnum, GraphQLInputObject, GraphQLObject,
+};
 use uuid::Uuid;
 
 use crate::database;
 use crate::entities;
 use crate::services;
+
+#[derive(GraphQLEnum, Clone)]
+pub enum Order {
+    ASC,
+    DESC,
+}
 
 #[derive(GraphQLObject, Clone)]
 pub struct Integration {
@@ -44,6 +52,74 @@ struct NewTransaction {
     exit_account_code: Option<String>,
     amount: f64,
     description: Option<String>,
+}
+
+#[derive(GraphQLEnum, Clone)]
+enum EarningIndex {
+    CDI,
+    FIXED,
+    IPCA,
+}
+
+#[derive(GraphQLObject, Clone)]
+struct Earning {
+    rate: f64,
+    index: EarningIndex,
+}
+
+#[derive(GraphQLInputObject, Clone)]
+struct EarningInput {
+    rate: f64,
+    index: EarningIndex,
+}
+
+#[derive(GraphQLObject, Clone)]
+struct PreAllocation {
+    amount: f64,
+    accumulative: bool,
+}
+
+#[derive(GraphQLInputObject, Clone)]
+struct PreAllocationInput {
+    amount: Option<f64>,
+    accumulative: Option<bool>,
+}
+
+// Account fields that can be updated.
+#[derive(GraphQLInputObject, Clone)]
+struct UpdatedAccount {
+    name: Option<String>,
+    description: Option<String>,
+    pre_allocation: Option<PreAllocationInput>,
+    earning: Option<EarningInput>,
+    is_available: Option<bool>,
+    in_trash: Option<bool>,
+}
+
+// An input account.
+#[derive(GraphQLInputObject, Clone)]
+struct NewAccount {
+    time: NaiveDateTime,
+    initial_balance: f64,
+    name: String,
+    description: Option<String>,
+    pre_allocation: Option<PreAllocationInput>,
+    earning: Option<EarningInput>,
+    is_available: bool,
+}
+
+// A simple account.
+#[derive(GraphQLObject, Clone)]
+struct Account {
+    id: Uuid,
+    time: NaiveDateTime,
+    name: String,
+    description: Option<String>,
+    balance: f64,
+    pre_allocation: Option<PreAllocation>,
+    earning: Option<Earning>,
+    is_available: bool,
+    in_trash: bool,
 }
 
 impl entities::user::UserIntegration {
@@ -109,6 +185,22 @@ impl Query {
         "1.0"
     }
 
+    async fn account(context: &Context, token: String, id: Uuid) -> FieldResult<Account> {
+        unimplemented!()
+    }
+    async fn accounts(
+        context: &Context,
+        token: String,
+        order: Option<Order>,
+        page_size: Option<i32>,
+        page: i32,
+        is_pre_allocation: bool,
+        in_trash: bool,
+        tags: Option<Vec<Uuid>>,
+    ) -> FieldResult<Vec<Account>> {
+        unimplemented!()
+    }
+
     async fn transactions(context: &Context, token: String) -> FieldResult<Vec<Transaction>> {
         let transactions = services::transaction::auth_and_list_user_transactions(
             &context.pool,
@@ -141,6 +233,37 @@ pub struct Mutations;
 
 #[graphql_object(context = Context)]
 impl Mutations {
+    async fn create_account(
+        context: &Context,
+        token: String,
+        account: NewAccount,
+    ) -> FieldResult<Account> {
+        unimplemented!()
+    }
+
+    async fn edit_account(
+        context: &Context,
+        token: String,
+        id: Uuid,
+        updated_account: UpdatedAccount,
+    ) -> FieldResult<Account> {
+        unimplemented!()
+    }
+
+    async fn delete_account(context: &Context, token: String, id: Uuid) -> FieldResult<Uuid> {
+        unimplemented!()
+    }
+
+    async fn pre_allocate(
+        context: &Context,
+        token: String,
+        from: Uuid,
+        to: Uuid,
+        amount: f64,
+    ) -> FieldResult<PreAllocation> {
+        unimplemented!()
+    }
+
     async fn create_user(
         context: &Context,
         username: String,

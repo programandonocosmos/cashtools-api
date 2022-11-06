@@ -1,7 +1,7 @@
 include .env.local
 
 run:
-	@DATABASE_URL=$(DATABASE_URL) JWT_SECRET=$(JWT_SECRET) cargo run
+	@DATABASE_URL=$(DATABASE_URL) JWT_SECRET=$(JWT_SECRET) ENV=$(ENV) cargo run
 
 proxy:
 	@flyctl proxy 5432 -a $(DB_APPNAME)

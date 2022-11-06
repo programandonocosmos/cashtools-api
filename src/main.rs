@@ -45,6 +45,11 @@ async fn rocket() -> _ {
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+    let env = match env::var("ENV").expect("ENV must be set").as_str() {
+        "DEV" => entities::Env::DEV,
+        "PROD" => entities::Env::PROD,
+        _ => panic!("ENV must be DEV or PROD"),
+    };
 
     let pool = database::establish_pooled_connection(database_url);
 
@@ -52,7 +57,11 @@ async fn rocket() -> _ {
         .merge(("port", 8080))
         .merge(("address", "0.0.0.0"));
 
-    let context = graphql_resolvers::Context { pool, jwt_secret };
+    let context = graphql_resolvers::Context {
+        pool,
+        jwt_secret,
+        env,
+    };
 
     let schema = graphql_resolvers::Schema::new(
         graphql_resolvers::Query,

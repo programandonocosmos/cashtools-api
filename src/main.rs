@@ -48,7 +48,7 @@ async fn rocket() -> _ {
     let env = match env::var("ENV").expect("ENV must be set").as_str() {
         "DEV" => entities::Env::DEV,
         "PROD" => entities::Env::PROD,
-        _ => panic!("ENV must be DEV or PROD"),
+        x => panic!("ENV must be DEV or PROD but is {}", x),
     };
 
     let pool = database::establish_pooled_connection(database_url);

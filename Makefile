@@ -11,3 +11,6 @@ deploy:
 
 migration-run:
 	@DATABASE_URL=$(DATABASE_URL) diesel migration run
+
+migration-revert:
+	@DATABASE_URL=$(DATABASE_URL) diesel migration revert

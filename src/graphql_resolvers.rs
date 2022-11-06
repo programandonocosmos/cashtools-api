@@ -174,6 +174,7 @@ impl NewTransaction {
 pub struct Context {
     pub pool: database::DbPool,
     pub jwt_secret: String,
+    pub env: entities::Env,
 }
 impl juniper::Context for Context {}
 
@@ -224,6 +225,7 @@ impl Query {
             email,
             login_code,
             &context.jwt_secret,
+            &context.env,
         )?;
         Ok(token)
     }

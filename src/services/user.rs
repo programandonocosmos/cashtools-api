@@ -6,8 +6,12 @@ use rand::Rng;
 use uuid::Uuid;
 
 use crate::{
-    database, entities::user, jwt, models::transaction as transaction_model,
-    models::user as user_model, models::user_integration as user_integration_model,
+    database,
+    entities::{user, Env},
+    jwt,
+    models::transaction as transaction_model,
+    models::user as user_model,
+    models::user_integration as user_integration_model,
     sendemail::send_code,
 };
 
@@ -113,18 +117,22 @@ pub fn validate_and_generate_token(
     email: String,
     login_code: i32,
     jwt_secret: &str,
+    env: &Env,
 ) -> Result<String> {
     let real_login_code = user_model::get_login_code(conn, &email)?;
     let id = user_model::get_id_by_email(conn, &email)?;
 
-    if login_code == real_login_code {
-        Ok(jwt::generate_token(
-            Utc::now().naive_utc(),
-            &id,
-            jwt_secret,
-        )?)
-    } else {
-        Err(UserServiceError::LoginCodeNotMatching)
+    let token = jwt::generate_token(Utc::now().naive_utc(), &id, jwt_secret)?;
+
+    match env {
+        Env::DEV => Ok(token),
+        Env::PROD => {
+            if login_code == real_login_code {
+                Ok(token)
+            } else {
+                Err(UserServiceError::LoginCodeNotMatching)
+            }
+        }
     }
 }
 

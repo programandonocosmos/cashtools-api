@@ -329,7 +329,12 @@ impl Mutations {
         token: String,
         account: NewAccount,
     ) -> FieldResult<Account> {
-        let account = services::account::create_account(&context.pool, account.to_entity())?;
+        let account = services::account::auth_and_create_account(
+            &context.pool,
+            &token,
+            &context.jwt_secret,
+            account.to_entity(),
+        )?;
         Ok(account.to_graphql())
     }
 

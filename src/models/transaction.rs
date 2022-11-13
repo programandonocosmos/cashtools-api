@@ -27,10 +27,10 @@ struct NewTransaction {
     description: Option<String>,
 }
 
-impl transaction::NewTransactionWithRelatedUser {
-    fn to_model(&self) -> NewTransaction {
+impl transaction::NewTransaction {
+    fn to_model(&self, related_user: Uuid) -> NewTransaction {
         NewTransaction {
-            related_user: self.related_user,
+            related_user,
             entry_date: self.entry_date,
             entry_account_code: self.entry_account_code.clone(),
             exit_account_code: self.exit_account_code.clone(),
@@ -72,10 +72,11 @@ pub type Result<T> = std::result::Result<T, TransactionModelError>;
 
 pub fn create_transaction(
     conn: &database::DbPool,
-    t: transaction::NewTransactionWithRelatedUser,
+    user_id: Uuid,
+    new_transaction: transaction::NewTransaction,
 ) -> Result<transaction::Transaction> {
     diesel::insert_into(transaction_schema::table)
-        .values(&t.to_model())
+        .values(&new_transaction.to_model(user_id))
         .get_result::<Transaction>(&mut conn.get()?)
         .map(|t| t.to_entity())
         .map_err(TransactionModelError::FailedToCreateTransaction)

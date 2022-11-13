@@ -48,25 +48,10 @@ pub fn auth_and_create_transaction(
     new_transaction: transaction::NewTransaction,
 ) -> Result<transaction::Transaction> {
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
-    create_transaction(conn, id, new_transaction)
-}
-
-fn create_transaction(
-    conn: &database::DbPool,
-    id: Uuid,
-    new_transaction: transaction::NewTransaction,
-) -> Result<transaction::Transaction> {
-    let transaction_with_related_user = transaction::NewTransactionWithRelatedUser {
-        related_user: id,
-        entry_date: new_transaction.entry_date,
-        entry_account_code: new_transaction.entry_account_code,
-        exit_account_code: new_transaction.exit_account_code,
-        amount: new_transaction.amount,
-        description: new_transaction.description,
-    };
     Ok(transaction_model::create_transaction(
         conn,
-        transaction_with_related_user,
+        id,
+        new_transaction,
     )?)
 }
 

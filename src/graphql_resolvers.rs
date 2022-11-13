@@ -54,7 +54,7 @@ struct NewTransaction {
     description: Option<String>,
 }
 
-#[derive(GraphQLEnum, Clone)]
+#[derive(GraphQLEnum, Clone, Copy)]
 enum EarningIndex {
     CDI,
     FIXED,
@@ -67,7 +67,7 @@ struct Earning {
     index: EarningIndex,
 }
 
-#[derive(GraphQLInputObject, Clone)]
+#[derive(GraphQLInputObject, Clone, Copy)]
 struct EarningInput {
     rate: f64,
     index: EarningIndex,
@@ -79,7 +79,7 @@ struct PreAllocation {
     accumulative: bool,
 }
 
-#[derive(GraphQLInputObject, Clone)]
+#[derive(GraphQLInputObject, Clone, Copy)]
 struct PreAllocationInput {
     amount: Option<f64>,
     accumulative: Option<bool>,
@@ -159,6 +159,50 @@ impl entities::transaction::Transaction {
     }
 }
 
+impl entities::account::EarningIndex {
+    fn to_entity(&self) -> EarningIndex {
+        match self {
+            entities::account::EarningIndex::CDI => EarningIndex::CDI,
+            entities::account::EarningIndex::FIXED => EarningIndex::FIXED,
+            entities::account::EarningIndex::IPCA => EarningIndex::IPCA,
+        }
+    }
+}
+
+impl entities::account::PreAllocation {
+    fn to_graphql(&self) -> PreAllocation {
+        PreAllocation {
+            amount: self.amount,
+            accumulative: self.accumulative,
+        }
+    }
+}
+
+impl entities::account::Earning {
+    fn to_graphql(&self) -> Earning {
+        Earning {
+            rate: self.rate,
+            index: self.index.to_entity(),
+        }
+    }
+}
+
+impl entities::account::Account {
+    fn to_graphql(&self) -> Account {
+        Account {
+            id: self.id,
+            time: self.time,
+            name: self.name.clone(),
+            description: self.description.clone(),
+            balance: self.balance,
+            pre_allocation: self.pre_allocation.map(|x| x.to_graphql()),
+            earning: self.earning.map(|x| x.to_graphql()),
+            is_available: self.is_available,
+            in_trash: self.in_trash,
+        }
+    }
+}
+
 impl NewTransaction {
     fn to_entity(&self) -> entities::transaction::NewTransaction {
         entities::transaction::NewTransaction {
@@ -167,6 +211,51 @@ impl NewTransaction {
             exit_account_code: self.exit_account_code.clone(),
             amount: self.amount,
             description: self.description.clone(),
+        }
+    }
+}
+
+impl PreAllocationInput {
+    fn to_entity(&self) -> Option<entities::account::PreAllocation> {
+        match (self.amount, self.accumulative) {
+            (Some(amount), Some(accumulative)) => Some(entities::account::PreAllocation {
+                amount,
+                accumulative,
+            }),
+            _ => None,
+        }
+    }
+}
+
+impl EarningIndex {
+    fn to_entity(&self) -> entities::account::EarningIndex {
+        match self {
+            EarningIndex::CDI => entities::account::EarningIndex::CDI,
+            EarningIndex::FIXED => entities::account::EarningIndex::FIXED,
+            EarningIndex::IPCA => entities::account::EarningIndex::IPCA,
+        }
+    }
+}
+
+impl EarningInput {
+    fn to_entity(&self) -> entities::account::Earning {
+        entities::account::Earning {
+            rate: self.rate,
+            index: self.index.to_entity(),
+        }
+    }
+}
+
+impl NewAccount {
+    fn to_entity(&self) -> entities::account::NewAccount {
+        entities::account::NewAccount {
+            time: self.time,
+            initial_balance: self.initial_balance,
+            name: self.name.clone(),
+            description: self.description.clone(),
+            pre_allocation: self.pre_allocation.and_then(|x| x.to_entity()),
+            earning: self.earning.map(|x| x.to_entity()),
+            is_available: self.is_available,
         }
     }
 }
@@ -240,7 +329,8 @@ impl Mutations {
         token: String,
         account: NewAccount,
     ) -> FieldResult<Account> {
-        unimplemented!()
+        let account = services::account::create_account(&context.pool, account.to_entity())?;
+        Ok(account.to_graphql())
     }
 
     async fn edit_account(

@@ -12,6 +12,7 @@ diesel::table! {
 
     accounts (id) {
         id -> Uuid,
+        related_user -> Uuid,
         time -> Timestamp,
         name -> Text,
         description -> Nullable<Text>,

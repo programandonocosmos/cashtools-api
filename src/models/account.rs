@@ -17,6 +17,7 @@ enum EarningIndexEnum {
 #[diesel(table_name = account_schema)]
 struct Account {
     id: Uuid,
+    related_user: Uuid,
     time: NaiveDateTime,
     name: String,
     description: Option<String>,
@@ -34,6 +35,7 @@ struct Account {
 #[derive(Insertable, Clone)]
 #[diesel(table_name = account_schema)]
 struct NewAccount {
+    related_user: Uuid,
     time: NaiveDateTime,
     name: String,
     description: Option<String>,
@@ -69,8 +71,9 @@ impl EarningIndexEnum {
 }
 
 impl account::NewAccount {
-    fn to_model(&self) -> NewAccount {
+    fn to_model(&self, related_user: Uuid) -> NewAccount {
         NewAccount {
+            related_user,
             time: self.time,
             name: self.name.clone(),
             description: self.description.clone(),
@@ -93,27 +96,44 @@ impl account::NewAccount {
     }
 }
 
+fn pre_allocation_from_table_fields(
+    is_pre_allocation: bool,
+    amount: Option<f64>,
+    accumulative: Option<bool>,
+) -> Option<account::PreAllocation> {
+    match (is_pre_allocation, amount, accumulative) {
+        (true, Some(amount), Some(accumulative)) => Some(account::PreAllocation {
+            amount,
+            accumulative,
+        }),
+        _ => None,
+    }
+}
+
+fn earning_from_table_fields(
+    is_earning: bool,
+    rate: Option<f64>,
+    index: Option<account::EarningIndex>,
+) -> Option<account::Earning> {
+    match (is_earning, rate, index) {
+        (true, Some(rate), Some(index)) => Some(account::Earning { rate, index }),
+        _ => None,
+    }
+}
+
 impl Account {
     fn to_entity(&self) -> account::Account {
-        let pre_allocation = match (
+        let pre_allocation = pre_allocation_from_table_fields(
             self.is_pre_allocation,
             self.pre_allocation_amount,
             self.pre_allocation_accumulative,
-        ) {
-            (true, Some(amount), Some(accumulative)) => Some(account::PreAllocation {
-                amount,
-                accumulative,
-            }),
-            _ => None,
-        };
+        );
 
-        let earning = match (self.is_earning, self.earning_rate, self.earning_index) {
-            (true, Some(rate), Some(index)) => Some(account::Earning {
-                rate,
-                index: index.to_entity(),
-            }),
-            _ => None,
-        };
+        let earning = earning_from_table_fields(
+            self.is_earning,
+            self.earning_rate,
+            self.earning_index.map(|x| x.to_entity()),
+        );
 
         account::Account {
             id: self.id,
@@ -144,9 +164,13 @@ impl From<r2d2::Error> for AccountModelError {
 
 pub type Result<T> = std::result::Result<T, AccountModelError>;
 
-pub fn create_account(conn: &database::DbPool, t: account::NewAccount) -> Result<account::Account> {
+pub fn create_account(
+    conn: &database::DbPool,
+    user_id: Uuid,
+    new_account: account::NewAccount,
+) -> Result<account::Account> {
     diesel::insert_into(account_schema::table)
-        .values(&t.to_model())
+        .values(&new_account.to_model(user_id))
         .get_result::<Account>(&mut conn.get()?)
         .map(|t| t.to_entity())
         .map_err(AccountModelError::FailedToCreateAccount)

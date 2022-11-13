@@ -38,9 +38,12 @@ impl From<jwt::JwtError> for AccountServiceError {
 
 pub type Result<T> = std::result::Result<T, AccountServiceError>;
 
-pub fn create_account(
+pub fn auth_and_create_account(
     conn: &database::DbPool,
+    token: &str,
+    jwt_secret: &str,
     new_account: account::NewAccount,
 ) -> Result<account::Account> {
-    Ok(account_model::create_account(conn, new_account)?)
+    let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
+    Ok(account_model::create_account(conn, id, new_account)?)
 }

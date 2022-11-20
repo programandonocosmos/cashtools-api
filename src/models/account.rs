@@ -50,6 +50,21 @@ struct NewAccount {
     in_trash: bool,
 }
 
+#[derive(AsChangeset)]
+#[diesel(table_name = account_schema)]
+struct UpdatedAccount {
+    name: Option<String>,
+    description: Option<String>,
+    is_pre_allocation: Option<bool>,
+    pre_allocation_amount: Option<f64>,
+    pre_allocation_accumulative: Option<bool>,
+    is_earning: Option<bool>,
+    earning_rate: Option<f64>,
+    earning_index: Option<EarningIndexEnum>,
+    is_available: Option<bool>,
+    in_trash: Option<bool>,
+}
+
 impl account::EarningIndex {
     fn to_model(&self) -> EarningIndexEnum {
         match self {
@@ -149,11 +164,35 @@ impl Account {
     }
 }
 
+impl account::UpdatedAccount {
+    fn to_model(&self) -> UpdatedAccount {
+        UpdatedAccount {
+            name: self.name.clone(),
+            description: self.description.clone(),
+            is_pre_allocation: match self.pre_allocation {
+                Some(_) => Some(true),
+                None => None,
+            },
+            pre_allocation_amount: self.pre_allocation.map(|x| x.amount),
+            pre_allocation_accumulative: self.pre_allocation.map(|x| x.accumulative),
+            is_earning: match self.earning {
+                Some(_) => Some(true),
+                None => None,
+            },
+            earning_rate: self.earning.map(|x| x.rate),
+            earning_index: self.earning.map(|x| x.index.to_model()),
+            is_available: self.is_available,
+            in_trash: self.in_trash,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum AccountModelError {
     FailedToGetConn(r2d2::Error),
     FailedToCreateAccount(diesel::result::Error),
     FailedToDeleteAccount(diesel::result::Error),
+    FailedToUpdateAccount(diesel::result::Error),
 }
 
 impl From<r2d2::Error> for AccountModelError {
@@ -181,4 +220,16 @@ pub fn delete_account(conn: &database::DbPool, id: &Uuid) -> Result<()> {
         .execute(&mut conn.get()?)
         .map_err(AccountModelError::FailedToDeleteAccount)?;
     Ok(())
+}
+
+pub fn edit_account(
+    conn: &database::DbPool,
+    id: Uuid,
+    updated_account: account::UpdatedAccount,
+) -> Result<account::Account> {
+    let account = diesel::update(account_schema::table.filter(account_schema::id.eq(id)))
+        .set(updated_account.to_model())
+        .get_result::<Account>(&mut conn.get()?)
+        .map_err(AccountModelError::FailedToUpdateAccount)?;
+    Ok(account.to_entity())
 }

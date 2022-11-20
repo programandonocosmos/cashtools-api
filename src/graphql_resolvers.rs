@@ -283,9 +283,9 @@ impl Query {
         token: String,
         order: Option<Order>,
         page_size: Option<i32>,
-        page: i32,
-        is_pre_allocation: bool,
-        in_trash: bool,
+        page: Option<i32>,
+        is_pre_allocation: Option<bool>,
+        in_trash: Option<bool>,
         tags: Option<Vec<Uuid>>,
     ) -> FieldResult<Vec<Account>> {
         unimplemented!()

@@ -348,7 +348,13 @@ impl Mutations {
     }
 
     async fn delete_account(context: &Context, token: String, id: Uuid) -> FieldResult<Uuid> {
-        unimplemented!()
+        let _ = services::account::auth_and_delete_account(
+            &context.pool,
+            &token,
+            &context.jwt_secret,
+            &id,
+        )?;
+        Ok(id)
     }
 
     async fn pre_allocate(

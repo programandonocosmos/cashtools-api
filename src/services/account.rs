@@ -47,3 +47,13 @@ pub fn auth_and_create_account(
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
     Ok(account_model::create_account(conn, id, new_account)?)
 }
+
+pub fn auth_and_delete_account(
+    conn: &database::DbPool,
+    token: &str,
+    jwt_secret: &str,
+    id: &Uuid,
+) -> Result<()> {
+    let _ = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
+    Ok(account_model::delete_account(conn, id)?)
+}

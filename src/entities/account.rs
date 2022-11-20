@@ -32,6 +32,15 @@ pub struct Account {
     pub in_trash: bool,
 }
 
+pub struct UpdatedAccount {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub pre_allocation: Option<PreAllocation>,
+    pub earning: Option<Earning>,
+    pub is_available: Option<bool>,
+    pub in_trash: Option<bool>,
+}
+
 pub struct NewAccount {
     pub time: NaiveDateTime,
     pub initial_balance: f64,

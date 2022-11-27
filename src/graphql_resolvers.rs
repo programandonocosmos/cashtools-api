@@ -380,9 +380,11 @@ impl Mutations {
     async fn pre_allocate(
         context: &Context,
         token: String,
+        time: NaiveDate,
         from: Uuid,
         to: Uuid,
         amount: f64,
+        accumulative: bool,
     ) -> FieldResult<PreAllocation> {
         unimplemented!()
     }

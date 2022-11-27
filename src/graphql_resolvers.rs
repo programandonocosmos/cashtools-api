@@ -203,6 +203,19 @@ impl entities::account::Account {
     }
 }
 
+impl UpdatedAccount {
+    fn to_entity(&self) -> entities::account::UpdatedAccount {
+        entities::account::UpdatedAccount {
+            name: self.name.clone(),
+            description: self.description.clone(),
+            pre_allocation: self.pre_allocation.and_then(|x| x.to_entity()),
+            earning: self.earning.map(|x| x.to_entity()),
+            is_available: self.is_available,
+            in_trash: self.in_trash,
+        }
+    }
+}
+
 impl NewTransaction {
     fn to_entity(&self) -> entities::transaction::NewTransaction {
         entities::transaction::NewTransaction {
@@ -344,7 +357,14 @@ impl Mutations {
         id: Uuid,
         updated_account: UpdatedAccount,
     ) -> FieldResult<Account> {
-        unimplemented!()
+        let account = services::account::auth_and_edit_account(
+            &context.pool,
+            &token,
+            &context.jwt_secret,
+            &id,
+            updated_account.to_entity(),
+        )?;
+        Ok(account.to_graphql())
     }
 
     async fn delete_account(context: &Context, token: String, id: Uuid) -> FieldResult<Uuid> {

@@ -4,7 +4,7 @@ CREATE TABLE accounts (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     related_user UUID NOT NULL,
     time TIMESTAMP NOT NULL,
-    name TEXT NOT NULL,
+    name TEXT UNIQUE NOT NULL,
     description TEXT,
     last_calculated_balance FLOAT NOT NULL,
     is_pre_allocation BOOLEAN NOT NULL,

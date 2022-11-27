@@ -224,7 +224,7 @@ pub fn delete_account(conn: &database::DbPool, id: &Uuid) -> Result<()> {
 
 pub fn edit_account(
     conn: &database::DbPool,
-    id: Uuid,
+    id: &Uuid,
     updated_account: account::UpdatedAccount,
 ) -> Result<account::Account> {
     let account = diesel::update(account_schema::table.filter(account_schema::id.eq(id)))

@@ -50,7 +50,7 @@ pub fn auth_and_create_transaction(
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
     Ok(transaction_model::create_transaction(
         conn,
-        id,
+        &id,
         new_transaction,
     )?)
 }

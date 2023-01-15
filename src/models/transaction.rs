@@ -28,9 +28,9 @@ struct NewTransaction {
 }
 
 impl transaction::NewTransaction {
-    fn to_model(&self, related_user: Uuid) -> NewTransaction {
+    fn to_model(&self, related_user: &Uuid) -> NewTransaction {
         NewTransaction {
-            related_user,
+            related_user: related_user.clone(),
             entry_date: self.entry_date,
             entry_account_code: self.entry_account_code.clone(),
             exit_account_code: self.exit_account_code.clone(),
@@ -72,7 +72,7 @@ pub type Result<T> = std::result::Result<T, TransactionModelError>;
 
 pub fn create_transaction(
     conn: &database::DbPool,
-    user_id: Uuid,
+    user_id: &Uuid,
     new_transaction: transaction::NewTransaction,
 ) -> Result<transaction::Transaction> {
     diesel::insert_into(transaction_schema::table)

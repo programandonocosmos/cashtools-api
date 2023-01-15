@@ -225,11 +225,16 @@ pub fn delete_account(conn: &database::DbPool, id: &Uuid) -> Result<()> {
 pub fn edit_account(
     conn: &database::DbPool,
     id: &Uuid,
+    user_id: &Uuid,
     updated_account: account::UpdatedAccount,
 ) -> Result<account::Account> {
-    let account = diesel::update(account_schema::table.filter(account_schema::id.eq(id)))
-        .set(updated_account.to_model())
-        .get_result::<Account>(&mut conn.get()?)
-        .map_err(AccountModelError::FailedToUpdateAccount)?;
+    let account = diesel::update(
+        account_schema::table
+            .filter(account_schema::id.eq(id))
+            .filter(account_schema::related_user.eq(user_id)),
+    )
+    .set(updated_account.to_model())
+    .get_result::<Account>(&mut conn.get()?)
+    .map_err(AccountModelError::FailedToUpdateAccount)?;
     Ok(account.to_entity())
 }

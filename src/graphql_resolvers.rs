@@ -160,7 +160,7 @@ impl entities::transaction::Transaction {
 }
 
 impl entities::account::EarningIndex {
-    fn to_entity(&self) -> EarningIndex {
+    fn to_graphql(&self) -> EarningIndex {
         match self {
             entities::account::EarningIndex::CDI => EarningIndex::CDI,
             entities::account::EarningIndex::FIXED => EarningIndex::FIXED,
@@ -182,7 +182,7 @@ impl entities::account::Earning {
     fn to_graphql(&self) -> Earning {
         Earning {
             rate: self.rate,
-            index: self.index.to_entity(),
+            index: self.index.to_graphql(),
         }
     }
 }
@@ -386,7 +386,17 @@ impl Mutations {
         amount: f64,
         accumulative: bool,
     ) -> FieldResult<PreAllocation> {
-        unimplemented!()
+        let pre_allocation_obj = services::account::auth_and_preallocate(
+            &context.pool,
+            &token,
+            &context.jwt_secret,
+            time,
+            &from,
+            &to,
+            amount,
+            accumulative,
+        )?;
+        Ok(pre_allocation_obj.to_graphql())
     }
 
     async fn create_user(

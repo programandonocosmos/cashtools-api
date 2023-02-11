@@ -112,8 +112,8 @@ pub fn preallocate(
         user_id,
         transaction::NewTransaction {
             entry_date: time,
-            entry_account_code: Some(from.to_string()),
-            exit_account_code: Some(to.to_string()),
+            entry_account_code: Some(from.clone()),
+            exit_account_code: Some(to.clone()),
             amount,
             description: Some("Preallocation transaction".to_string()),
         },

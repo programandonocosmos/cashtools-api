@@ -190,6 +190,8 @@ impl account::UpdatedAccount {
 #[derive(Debug)]
 pub enum AccountModelError {
     FailedToGetConn(r2d2::Error),
+    FailedToGetAccount(diesel::result::Error),
+    AccountNotFound,
     FailedToCreateAccount(diesel::result::Error),
     FailedToDeleteAccount(diesel::result::Error),
     FailedToUpdateAccount(diesel::result::Error),
@@ -202,6 +204,19 @@ impl From<r2d2::Error> for AccountModelError {
 }
 
 pub type Result<T> = std::result::Result<T, AccountModelError>;
+
+pub fn get_account(conn: &database::DbPool, id: &Uuid, user_id: &Uuid) -> Result<account::Account> {
+    let accounts = account_schema::table
+        .filter(account_schema::related_user.eq(user_id))
+        .filter(account_schema::id.eq(id))
+        .load::<Account>(&mut conn.get()?)
+        .map_err(AccountModelError::FailedToGetAccount)?;
+
+    match accounts.get(0) {
+        Some(acc) => Ok(acc.to_entity()),
+        None => Err(AccountModelError::AccountNotFound),
+    }
+}
 
 pub fn create_account(
     conn: &database::DbPool,

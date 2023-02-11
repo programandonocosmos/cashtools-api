@@ -38,8 +38,10 @@ struct Transaction {
     id: Uuid,
     related_user: Uuid,
     entry_date: NaiveDate,
-    entry_account_code: Option<String>,
-    exit_account_code: Option<String>,
+    entry_account_code: Option<Uuid>,
+    entry_account_name: Option<String>,
+    exit_account_code: Option<Uuid>,
+    exit_account_name: Option<String>,
     amount: f64,
     description: Option<String>,
 }
@@ -48,8 +50,8 @@ struct Transaction {
 #[derive(GraphQLInputObject, Clone)]
 struct NewTransaction {
     entry_date: NaiveDate,
-    entry_account_code: Option<String>,
-    exit_account_code: Option<String>,
+    entry_account_code: Option<Uuid>,
+    exit_account_code: Option<Uuid>,
     amount: f64,
     description: Option<String>,
 }
@@ -145,14 +147,16 @@ impl entities::user::UserWithIntegrations {
     }
 }
 
-impl entities::transaction::Transaction {
+impl entities::transaction::TransactionWithNames {
     fn to_graphql(&self) -> Transaction {
         Transaction {
             id: self.id,
             related_user: self.related_user,
             entry_date: self.entry_date,
-            entry_account_code: self.entry_account_code.clone(),
-            exit_account_code: self.exit_account_code.clone(),
+            entry_account_code: self.entry_account_code,
+            entry_account_name: self.entry_account_name.clone(),
+            exit_account_code: self.exit_account_code,
+            exit_account_name: self.exit_account_name.clone(),
             amount: self.amount,
             description: self.description.clone(),
         }

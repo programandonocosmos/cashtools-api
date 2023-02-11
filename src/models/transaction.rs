@@ -10,8 +10,8 @@ struct Transaction {
     id: Uuid,
     related_user: Uuid,
     entry_date: NaiveDate,
-    entry_account_code: Option<String>,
-    exit_account_code: Option<String>,
+    entry_account_code: Option<Uuid>,
+    exit_account_code: Option<Uuid>,
     amount: f64,
     description: Option<String>,
 }
@@ -21,8 +21,8 @@ struct Transaction {
 struct NewTransaction {
     related_user: Uuid,
     entry_date: NaiveDate,
-    entry_account_code: Option<String>,
-    exit_account_code: Option<String>,
+    entry_account_code: Option<Uuid>,
+    exit_account_code: Option<Uuid>,
     amount: f64,
     description: Option<String>,
 }

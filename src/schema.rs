@@ -33,8 +33,8 @@ diesel::table! {
         id -> Uuid,
         related_user -> Uuid,
         entry_date -> Date,
-        entry_account_code -> Nullable<Text>,
-        exit_account_code -> Nullable<Text>,
+        entry_account_code -> Nullable<Uuid>,
+        exit_account_code -> Nullable<Uuid>,
         amount -> Float8,
         description -> Nullable<Text>,
     }

@@ -15,6 +15,7 @@ mod models;
 mod schema;
 mod sendemail;
 mod services;
+mod utils;
 
 #[get("/")]
 fn graphiql() -> content::RawHtml<String> {

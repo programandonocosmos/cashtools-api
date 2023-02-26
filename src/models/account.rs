@@ -192,6 +192,7 @@ pub enum AccountModelError {
     FailedToGetConn(r2d2::Error),
     FailedToGetAccount(diesel::result::Error),
     AccountNotFound,
+    MultipleAccountWithSameId,
     FailedToCreateAccount(diesel::result::Error),
     FailedToDeleteAccount(diesel::result::Error),
     FailedToUpdateAccount(diesel::result::Error),
@@ -212,10 +213,20 @@ pub fn get_account(conn: &database::DbPool, id: &Uuid, user_id: &Uuid) -> Result
         .load::<Account>(&mut conn.get()?)
         .map_err(AccountModelError::FailedToGetAccount)?;
 
-    match accounts.get(0) {
-        Some(acc) => Ok(acc.to_entity()),
-        None => Err(AccountModelError::AccountNotFound),
+    match accounts.as_slice() {
+        [acc] => Ok(acc.to_entity()),
+        [] => Err(AccountModelError::AccountNotFound),
+        _ => Err(AccountModelError::MultipleAccountWithSameId),
     }
+}
+
+pub fn get_accounts(conn: &database::DbPool, user_id: &Uuid) -> Result<Vec<account::Account>> {
+    let accounts = account_schema::table
+        .filter(account_schema::related_user.eq(user_id))
+        .load::<Account>(&mut conn.get()?)
+        .map_err(AccountModelError::FailedToGetAccount)?;
+
+    Ok(accounts.iter().map(|t| t.to_entity()).collect())
 }
 
 pub fn create_account(

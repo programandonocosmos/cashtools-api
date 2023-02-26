@@ -293,19 +293,33 @@ impl Query {
     }
 
     async fn account(context: &Context, token: String, id: Uuid) -> FieldResult<Account> {
-        unimplemented!()
+        let account = services::account::auth_and_get_account(
+            &context.pool,
+            &token,
+            &context.jwt_secret,
+            &id,
+        )?;
+        Ok(account.to_graphql())
     }
     async fn accounts(
         context: &Context,
         token: String,
-        order: Option<Order>,
-        page_size: Option<i32>,
-        page: Option<i32>,
         is_pre_allocation: Option<bool>,
         in_trash: Option<bool>,
         tags: Option<Vec<Uuid>>,
     ) -> FieldResult<Vec<Account>> {
-        unimplemented!()
+        let accounts = services::account::auth_and_get_accounts(
+            &context.pool,
+            &token,
+            &context.jwt_secret,
+            is_pre_allocation,
+            in_trash,
+            tags,
+        )?
+        .iter()
+        .map(|t| t.to_graphql())
+        .collect();
+        Ok(accounts)
     }
 
     async fn transactions(context: &Context, token: String) -> FieldResult<Vec<Transaction>> {

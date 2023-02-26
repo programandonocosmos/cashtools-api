@@ -20,6 +20,7 @@ pub struct Earning {
     pub index: EarningIndex,
 }
 
+#[derive(Clone)]
 pub struct Account {
     pub id: Uuid,
     pub time: NaiveDateTime,

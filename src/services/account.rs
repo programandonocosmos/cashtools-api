@@ -134,3 +134,54 @@ pub fn auth_and_preallocate(
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
     preallocate(conn, &id, time, from, to, amount, accumulative)
 }
+
+pub fn auth_and_get_account(
+    conn: &database::DbPool,
+    token: &str,
+    jwt_secret: &str,
+    id: &Uuid,
+) -> Result<account::Account> {
+    let user_id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
+    let account = account_model::get_account(conn, &id, &user_id)?;
+    Ok(account)
+}
+
+pub fn auth_and_get_accounts(
+    conn: &database::DbPool,
+    token: &str,
+    jwt_secret: &str,
+    is_pre_allocation: Option<bool>,
+    in_trash: Option<bool>,
+    tags: Option<Vec<Uuid>>,
+) -> Result<Vec<account::Account>> {
+    let user_id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
+    let accounts = account_model::get_accounts(conn, &user_id)?;
+    Ok(accounts
+        .iter()
+        .filter(filter_accounts(is_pre_allocation, in_trash, tags))
+        .cloned()
+        .collect())
+}
+
+fn filter_accounts(
+    is_pre_allocation: Option<bool>,
+    in_trash: Option<bool>,
+    tags: Option<Vec<Uuid>>,
+) -> impl Fn(&&account::Account) -> bool {
+    move |account: &&account::Account| {
+        let pre_allocation_filter = match is_pre_allocation.clone() {
+            None => true,
+            Some(f) => account.pre_allocation.is_none() != f,
+        };
+        let in_trash_filter = match in_trash.clone() {
+            None => true,
+            Some(f) => account.in_trash == f,
+        };
+        let tags_filter = match tags.clone() {
+            None => true,
+            // TODO: Add tags table and implement this filter correctly
+            Some(f) => true,
+        };
+        pre_allocation_filter & in_trash_filter & tags_filter
+    }
+}

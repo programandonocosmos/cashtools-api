@@ -2,6 +2,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 use juniper::{
     graphql_object, EmptySubscription, FieldResult, GraphQLEnum, GraphQLInputObject, GraphQLObject,
 };
+use log;
 use uuid::Uuid;
 
 use crate::database;
@@ -14,7 +15,7 @@ pub enum Order {
     DESC,
 }
 
-#[derive(GraphQLObject, Clone)]
+#[derive(GraphQLObject, Clone, Debug)]
 pub struct Integration {
     id: Uuid,
     name: String,
@@ -22,7 +23,7 @@ pub struct Integration {
 }
 
 // A Cashtools user.
-#[derive(GraphQLObject, Clone)]
+#[derive(GraphQLObject, Clone, Debug)]
 pub struct User {
     id: Uuid,
     username: String,
@@ -33,7 +34,7 @@ pub struct User {
 }
 
 // A simple transaction.
-#[derive(GraphQLObject, Clone)]
+#[derive(GraphQLObject, Clone, Debug)]
 struct Transaction {
     id: Uuid,
     related_user: Uuid,
@@ -47,7 +48,7 @@ struct Transaction {
 }
 
 // An input transaction.
-#[derive(GraphQLInputObject, Clone)]
+#[derive(GraphQLInputObject, Clone, Debug)]
 struct NewTransaction {
     entry_date: NaiveDate,
     entry_account_code: Option<Uuid>,
@@ -56,39 +57,39 @@ struct NewTransaction {
     description: Option<String>,
 }
 
-#[derive(GraphQLEnum, Clone, Copy)]
+#[derive(GraphQLEnum, Clone, Copy, Debug)]
 enum EarningIndex {
     CDI,
     FIXED,
     IPCA,
 }
 
-#[derive(GraphQLObject, Clone)]
+#[derive(GraphQLObject, Clone, Debug)]
 struct Earning {
     rate: f64,
     index: EarningIndex,
 }
 
-#[derive(GraphQLInputObject, Clone, Copy)]
+#[derive(GraphQLInputObject, Clone, Copy, Debug)]
 struct EarningInput {
     rate: f64,
     index: EarningIndex,
 }
 
-#[derive(GraphQLObject, Clone)]
+#[derive(GraphQLObject, Clone, Debug)]
 struct PreAllocation {
     amount: f64,
     accumulative: bool,
 }
 
-#[derive(GraphQLInputObject, Clone, Copy)]
+#[derive(GraphQLInputObject, Clone, Copy, Debug)]
 struct PreAllocationInput {
     amount: Option<f64>,
     accumulative: Option<bool>,
 }
 
 // Account fields that can be updated.
-#[derive(GraphQLInputObject, Clone)]
+#[derive(GraphQLInputObject, Clone, Debug)]
 struct UpdatedAccount {
     name: Option<String>,
     description: Option<String>,
@@ -99,7 +100,7 @@ struct UpdatedAccount {
 }
 
 // An input account.
-#[derive(GraphQLInputObject, Clone)]
+#[derive(GraphQLInputObject, Clone, Debug)]
 struct NewAccount {
     time: NaiveDateTime,
     initial_balance: f64,
@@ -111,7 +112,7 @@ struct NewAccount {
 }
 
 // A simple account.
-#[derive(GraphQLObject, Clone)]
+#[derive(GraphQLObject, Clone, Debug)]
 struct Account {
     id: Uuid,
     time: NaiveDateTime,
@@ -360,6 +361,8 @@ impl Mutations {
         token: String,
         account: NewAccount,
     ) -> FieldResult<Account> {
+        println!("Received new account");
+        log::debug!("New account: {:?}", account);
         let account = services::account::auth_and_create_account(
             &context.pool,
             &token,

@@ -2,6 +2,7 @@ use juniper::EmptySubscription;
 use rocket::{response::content, State};
 
 use dotenvy::dotenv;
+use env_logger;
 use std::env;
 
 #[macro_use]
@@ -42,6 +43,7 @@ async fn post_graphql_handler(
 
 #[launch]
 async fn rocket() -> _ {
+    env_logger::init();
     dotenv().ok();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");

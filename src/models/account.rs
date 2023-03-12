@@ -1,6 +1,7 @@
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel_derive_enum;
+use log;
 use uuid::Uuid;
 
 use crate::{database, entities::account, schema::accounts as account_schema};
@@ -32,7 +33,7 @@ struct Account {
     in_trash: bool,
 }
 
-#[derive(Insertable, Clone)]
+#[derive(Insertable, Clone, Debug)]
 #[diesel(table_name = account_schema)]
 struct NewAccount {
     related_user: Uuid,
@@ -234,8 +235,10 @@ pub fn create_account(
     user_id: Uuid,
     new_account: account::NewAccount,
 ) -> Result<account::Account> {
+    let parsed_account = new_account.to_model(user_id);
+    log::debug!("Parsed account: {:?}", parsed_account);
     diesel::insert_into(account_schema::table)
-        .values(&new_account.to_model(user_id))
+        .values(&parsed_account)
         .get_result::<Account>(&mut conn.get()?)
         .map(|t| t.to_entity())
         .map_err(AccountModelError::FailedToCreateAccount)

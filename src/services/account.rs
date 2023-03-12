@@ -2,6 +2,7 @@ use std::fmt;
 
 use chrono::{NaiveDate, Utc};
 
+use log;
 use uuid::Uuid;
 
 use crate::{
@@ -52,6 +53,7 @@ pub fn auth_and_create_account(
     new_account: account::NewAccount,
 ) -> Result<account::Account> {
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
+    log::debug!("Related user: {:?}", id);
     Ok(account_model::create_account(conn, id, new_account)?)
 }
 
@@ -180,7 +182,7 @@ fn filter_accounts(
         let tags_filter = match tags.clone() {
             None => true,
             // TODO: Add tags table and implement this filter correctly
-            Some(f) => true,
+            Some(_) => true,
         };
         pre_allocation_filter & in_trash_filter & tags_filter
     }

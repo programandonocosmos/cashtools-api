@@ -5,6 +5,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  DATABASE_URL: ${{secrets.DATABASE_URL}}
 
 defaults:
   run:

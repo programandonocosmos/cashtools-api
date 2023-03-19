@@ -18,7 +18,7 @@ fn create_and_delete_account() {
         is_available: false,
     };
     let account = account::create_account(&conn, user_id, new_account).unwrap();
-    account::delete_account(&conn, &account.id).unwrap();
+    account::delete_account(&conn, &account.id, &user_id).unwrap();
 }
 
 #[test]
@@ -39,5 +39,5 @@ fn create_and_delete_account_with_earning() {
         is_available: false,
     };
     let account = account::create_account(&conn, user_id, new_account).unwrap();
-    account::delete_account(&conn, &account.id).unwrap();
+    account::delete_account(&conn, &account.id, &user_id).unwrap();
 }

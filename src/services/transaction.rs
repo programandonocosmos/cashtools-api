@@ -5,7 +5,8 @@ use uuid::Uuid;
 
 use crate::{
     database, entities::transaction, jwt, models::account as account_model,
-    models::transaction as transaction_model, models::user as user_model, utils::invert,
+    models::transaction as transaction_model, models::user as user_model,
+    utils::opt_result_of_result_opt,
 };
 
 #[derive(Debug)]
@@ -59,8 +60,8 @@ fn fill_name(
     let exit_account = transaction
         .exit_account_code
         .map(|code| account_model::get_account(conn, &code, user_id));
-    let entry_account_name = invert(entry_account)?.map(|x| x.name);
-    let exit_account_name = invert(exit_account)?.map(|x| x.name);
+    let entry_account_name = opt_result_of_result_opt(entry_account)?.map(|x| x.name);
+    let exit_account_name = opt_result_of_result_opt(exit_account)?.map(|x| x.name);
     Ok(transaction.with_names(entry_account_name, exit_account_name))
 }
 

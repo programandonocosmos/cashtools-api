@@ -29,7 +29,7 @@ jobs:
       - name: Install flyctl
         run: curl -L https://fly.io/install.sh | sh
       - name: Start proxy
-        run: flyctl proxy 5432 -a ${{secrets.DB_APPNAME}} &
+        run: $HOME/.fly/bin/flyctl proxy 5432 -a ${{secrets.DB_APPNAME}} --access-token ${{secrets.FLYIO_TOKEN}} &
       - name: Run tests
         run: cargo test --verbose
 

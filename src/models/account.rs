@@ -195,7 +195,7 @@ pub enum AccountModelError {
     AccountNotFound,
     MultipleAccountWithSameId,
     FailedToCreateAccount(diesel::result::Error),
-    FailedToDeleteAccount(diesel::result::Error),
+    FailedToDeleteAccount(Box<AccountModelError>),
     FailedToUpdateAccount(diesel::result::Error),
 }
 
@@ -244,11 +244,23 @@ pub fn create_account(
         .map_err(AccountModelError::FailedToCreateAccount)
 }
 
-pub fn delete_account(conn: &database::DbPool, id: &Uuid) -> Result<()> {
-    diesel::delete(account_schema::table.filter(account_schema::id.eq(id)))
-        .execute(&mut conn.get()?)
-        .map_err(AccountModelError::FailedToDeleteAccount)?;
-    Ok(())
+pub fn delete_account(conn: &database::DbPool, id: &Uuid, user_id: &Uuid) -> Result<()> {
+    match edit_account(
+        conn,
+        id,
+        user_id,
+        account::UpdatedAccount {
+            name: None,
+            description: None,
+            pre_allocation: None,
+            earning: None,
+            is_available: None,
+            in_trash: Some(true),
+        },
+    ) {
+        Ok(_) => Ok(()),
+        Err(err) => Err(AccountModelError::FailedToDeleteAccount(Box::new(err))),
+    }
 }
 
 pub fn edit_account(

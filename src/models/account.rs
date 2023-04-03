@@ -188,94 +188,76 @@ impl account::UpdatedAccount {
     }
 }
 
-#[derive(Debug)]
-pub enum AccountModelError {
-    FailedToGetConn(r2d2::Error),
-    FailedToGetAccount(diesel::result::Error),
-    AccountNotFound,
-    MultipleAccountWithSameId,
-    FailedToCreateAccount(diesel::result::Error),
-    FailedToDeleteAccount(Box<AccountModelError>),
-    FailedToUpdateAccount(diesel::result::Error),
-}
-
-impl From<r2d2::Error> for AccountModelError {
-    fn from(error: r2d2::Error) -> Self {
-        AccountModelError::FailedToGetConn(error)
+impl account::AccountModel for database::DbPool {
+    fn create_account(
+        &self,
+        user_id: Uuid,
+        new_account: account::NewAccount,
+    ) -> account::Result<account::Account> {
+        let parsed_account = new_account.to_model(user_id);
+        log::debug!("Parsed account: {:?}", parsed_account);
+        diesel::insert_into(account_schema::table)
+            .values(&parsed_account)
+            .get_result::<Account>(&mut self.get()?)
+            .map(|t| t.to_entity())
+            .map_err(account::AccountModelError::FailedToCreateAccount)
     }
-}
-
-pub type Result<T> = std::result::Result<T, AccountModelError>;
-
-pub fn get_account(conn: &database::DbPool, id: &Uuid, user_id: &Uuid) -> Result<account::Account> {
-    let accounts = account_schema::table
-        .filter(account_schema::related_user.eq(user_id))
-        .filter(account_schema::id.eq(id))
-        .load::<Account>(&mut conn.get()?)
-        .map_err(AccountModelError::FailedToGetAccount)?;
-
-    match accounts.as_slice() {
-        [acc] => Ok(acc.to_entity()),
-        [] => Err(AccountModelError::AccountNotFound),
-        _ => Err(AccountModelError::MultipleAccountWithSameId),
-    }
-}
-
-pub fn get_accounts(conn: &database::DbPool, user_id: &Uuid) -> Result<Vec<account::Account>> {
-    let accounts = account_schema::table
-        .filter(account_schema::related_user.eq(user_id))
-        .load::<Account>(&mut conn.get()?)
-        .map_err(AccountModelError::FailedToGetAccount)?;
-
-    Ok(accounts.iter().map(|t| t.to_entity()).collect())
-}
-
-pub fn create_account(
-    conn: &database::DbPool,
-    user_id: Uuid,
-    new_account: account::NewAccount,
-) -> Result<account::Account> {
-    let parsed_account = new_account.to_model(user_id);
-    log::debug!("Parsed account: {:?}", parsed_account);
-    diesel::insert_into(account_schema::table)
-        .values(&parsed_account)
-        .get_result::<Account>(&mut conn.get()?)
-        .map(|t| t.to_entity())
-        .map_err(AccountModelError::FailedToCreateAccount)
-}
-
-pub fn delete_account(conn: &database::DbPool, id: &Uuid, user_id: &Uuid) -> Result<()> {
-    match edit_account(
-        conn,
-        id,
-        user_id,
-        account::UpdatedAccount {
-            name: None,
-            description: None,
-            pre_allocation: None,
-            earning: None,
-            is_available: None,
-            in_trash: Some(true),
-        },
-    ) {
-        Ok(_) => Ok(()),
-        Err(err) => Err(AccountModelError::FailedToDeleteAccount(Box::new(err))),
-    }
-}
-
-pub fn edit_account(
-    conn: &database::DbPool,
-    id: &Uuid,
-    user_id: &Uuid,
-    updated_account: account::UpdatedAccount,
-) -> Result<account::Account> {
-    let account = diesel::update(
-        account_schema::table
+    fn get_account(&self, id: &Uuid, user_id: &Uuid) -> account::Result<account::Account> {
+        let accounts = account_schema::table
+            .filter(account_schema::related_user.eq(user_id))
             .filter(account_schema::id.eq(id))
-            .filter(account_schema::related_user.eq(user_id)),
-    )
-    .set(updated_account.to_model())
-    .get_result::<Account>(&mut conn.get()?)
-    .map_err(AccountModelError::FailedToUpdateAccount)?;
-    Ok(account.to_entity())
+            .load::<Account>(&mut self.get()?)
+            .map_err(account::AccountModelError::FailedToGetAccount)?;
+
+        match accounts.as_slice() {
+            [acc] => Ok(acc.to_entity()),
+            [] => Err(account::AccountModelError::AccountNotFound),
+            _ => Err(account::AccountModelError::MultipleAccountWithSameId),
+        }
+    }
+    fn get_accounts(&self, user_id: &Uuid) -> account::Result<Vec<account::Account>> {
+        let accounts = account_schema::table
+            .filter(account_schema::related_user.eq(user_id))
+            .load::<Account>(&mut self.get()?)
+            .map_err(account::AccountModelError::FailedToGetAccount)?;
+
+        Ok(accounts.iter().map(|t| t.to_entity()).collect())
+    }
+
+    fn delete_account(&self, id: &Uuid, user_id: &Uuid) -> account::Result<()> {
+        match self.edit_account(
+            id,
+            user_id,
+            account::UpdatedAccount {
+                name: None,
+                description: None,
+                pre_allocation: None,
+                earning: None,
+                is_available: None,
+                in_trash: Some(true),
+            },
+        ) {
+            Ok(_) => Ok(()),
+            Err(err) => Err(account::AccountModelError::FailedToDeleteAccount(Box::new(
+                err,
+            ))),
+        }
+    }
+
+    fn edit_account(
+        &self,
+        id: &Uuid,
+        user_id: &Uuid,
+        updated_account: account::UpdatedAccount,
+    ) -> account::Result<account::Account> {
+        let account = diesel::update(
+            account_schema::table
+                .filter(account_schema::id.eq(id))
+                .filter(account_schema::related_user.eq(user_id)),
+        )
+        .set(updated_account.to_model())
+        .get_result::<Account>(&mut self.get()?)
+        .map_err(account::AccountModelError::FailedToUpdateAccount)?;
+        Ok(account.to_entity())
+    }
 }

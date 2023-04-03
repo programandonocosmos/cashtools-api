@@ -1,6 +1,5 @@
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
-use r2d2;
 use uuid::Uuid;
 
 use crate::{database, entities::user, schema::users as user_schema};
@@ -53,123 +52,100 @@ impl User {
     }
 }
 
-#[derive(Debug)]
-pub enum UserModelError {
-    FailedToGetConn(r2d2::Error),
-    FailedToCreateUser(diesel::result::Error),
-    FailedToDeleteUser(diesel::result::Error),
-    FailedToGetUserById(diesel::result::Error),
-    FailedToCheckAvailability(diesel::result::Error),
-    FailedToGetLoginCode(diesel::result::Error),
-    FailedToGetIdByEmail(diesel::result::Error),
-    FailedToUpdateLoginCode(diesel::result::Error),
-    UserAlreadyExists,
-    UserDoesNotExists,
-    UserWithoutLoginCode,
-    MoreThanOneEmailError,
-    MoreThanOneIdError,
-}
+impl user::UserModel for database::DbPool {
+    fn create_user(&self, user: user::NewUser) -> user::Result<user::User> {
+        let username_is_available = self.check_if_username_available(&user.username)?;
+        let email_is_available = self.check_if_email_available(&user.email)?;
 
-impl From<r2d2::Error> for UserModelError {
-    fn from(error: r2d2::Error) -> Self {
-        UserModelError::FailedToGetConn(error)
+        match (username_is_available, email_is_available) {
+            (true, true) => diesel::insert_into(user_schema::table)
+                .values(&user.to_model())
+                .get_result::<User>(&mut self.get()?)
+                .map(|u| u.to_entity())
+                .map_err(user::UserModelError::FailedToCreateUser),
+            _ => Err(user::UserModelError::UserAlreadyExists),
+        }
     }
-}
 
-pub type Result<T> = std::result::Result<T, UserModelError>;
-
-pub fn create_user(conn: &database::DbPool, user: user::NewUser) -> Result<user::User> {
-    let username_is_available = check_if_username_available(&conn, &user.username)?;
-    let email_is_available = check_if_email_available(&conn, &user.email)?;
-
-    match (username_is_available, email_is_available) {
-        (true, true) => diesel::insert_into(user_schema::table)
-            .values(&user.to_model())
-            .get_result::<User>(&mut conn.get()?)
+    fn delete_user(&self, id: &Uuid) -> user::Result<user::User> {
+        diesel::delete(user_schema::table.filter(user_schema::id.eq(id)))
+            .get_result::<User>(&mut self.get()?)
             .map(|u| u.to_entity())
-            .map_err(UserModelError::FailedToCreateUser),
-        _ => Err(UserModelError::UserAlreadyExists),
+            .map_err(user::UserModelError::FailedToDeleteUser)
     }
-}
 
-pub fn delete_user(conn: &database::DbPool, id: &Uuid) -> Result<user::User> {
-    diesel::delete(user_schema::table.filter(user_schema::id.eq(id)))
-        .get_result::<User>(&mut conn.get()?)
-        .map(|u| u.to_entity())
-        .map_err(UserModelError::FailedToDeleteUser)
-}
+    fn get_user(&self, id: Uuid) -> user::Result<user::User> {
+        let users = user_schema::table
+            .filter(user_schema::id.eq(id))
+            .load::<User>(&mut self.get()?)
+            .map_err(user::UserModelError::FailedToGetUserById)?;
 
-pub fn get_user(conn: &database::DbPool, id: Uuid) -> Result<user::User> {
-    let users = user_schema::table
-        .filter(user_schema::id.eq(id))
-        .load::<User>(&mut conn.get()?)
-        .map_err(UserModelError::FailedToGetUserById)?;
-
-    match users.as_slice() {
-        [] => Err(UserModelError::UserDoesNotExists),
-        [u] => Ok(u.to_entity()),
-        _ => Err(UserModelError::MoreThanOneIdError),
+        match users.as_slice() {
+            [] => Err(user::UserModelError::UserDoesNotExists),
+            [u] => Ok(u.to_entity()),
+            _ => Err(user::UserModelError::MoreThanOneIdError),
+        }
     }
-}
 
-fn check_if_username_available(conn: &database::DbPool, username: &str) -> Result<bool> {
-    user_schema::table
-        .filter(user_schema::username.eq(username))
-        .load::<User>(&mut conn.get()?)
-        .map(|v| v.is_empty())
-        .map_err(UserModelError::FailedToCheckAvailability)
-}
-
-fn check_if_email_available(conn: &database::DbPool, email: &str) -> Result<bool> {
-    user_schema::table
-        .filter(user_schema::email.eq(email))
-        .load::<User>(&mut conn.get()?)
-        .map(|v| v.is_empty())
-        .map_err(UserModelError::FailedToCheckAvailability)
-}
-
-pub fn refresh_login_code(
-    conn: &database::DbPool,
-    email: &str,
-    login_code: i32,
-    time: NaiveDateTime,
-) -> Result<()> {
-    let _ = diesel::update(user_schema::table.filter(user_schema::email.eq(email)))
-        .set((
-            user_schema::login_code.eq(login_code),
-            user_schema::last_code_gen_request.eq(time),
-        ))
-        .get_result::<User>(&mut conn.get()?)
-        .map_err(UserModelError::FailedToUpdateLoginCode)?;
-    Ok(())
-}
-
-pub fn get_login_code(conn: &database::DbPool, email: &str) -> Result<i32> {
-    let result = user_schema::table
-        .filter(user_schema::email.eq(email))
-        .load::<User>(&mut conn.get()?)
-        .map_err(UserModelError::FailedToGetLoginCode)?;
-
-    match result.as_slice() {
-        [] => Err(UserModelError::UserDoesNotExists),
-        [User {
-            login_code: Some(l),
-            ..
-        }] => Ok(l.clone()),
-        [_u] => Err(UserModelError::UserWithoutLoginCode),
-        _ => Err(UserModelError::MoreThanOneEmailError),
+    fn check_if_username_available(&self, username: &str) -> user::Result<bool> {
+        user_schema::table
+            .filter(user_schema::username.eq(username))
+            .load::<User>(&mut self.get()?)
+            .map(|v| v.is_empty())
+            .map_err(user::UserModelError::FailedToCheckAvailability)
     }
-}
 
-pub fn get_id_by_email(conn: &database::DbPool, email: &str) -> Result<Uuid> {
-    let result = user_schema::table
-        .filter(user_schema::email.eq(email))
-        .load::<User>(&mut conn.get()?)
-        .map_err(UserModelError::FailedToGetIdByEmail)?;
+    fn check_if_email_available(&self, email: &str) -> user::Result<bool> {
+        user_schema::table
+            .filter(user_schema::email.eq(email))
+            .load::<User>(&mut self.get()?)
+            .map(|v| v.is_empty())
+            .map_err(user::UserModelError::FailedToCheckAvailability)
+    }
 
-    match result.as_slice() {
-        [] => Err(UserModelError::UserDoesNotExists),
-        [u] => Ok(u.id),
-        _ => Err(UserModelError::MoreThanOneEmailError),
+    fn refresh_login_code(
+        &self,
+        email: &str,
+        login_code: i32,
+        time: NaiveDateTime,
+    ) -> user::Result<()> {
+        let _ = diesel::update(user_schema::table.filter(user_schema::email.eq(email)))
+            .set((
+                user_schema::login_code.eq(login_code),
+                user_schema::last_code_gen_request.eq(time),
+            ))
+            .get_result::<User>(&mut self.get()?)
+            .map_err(user::UserModelError::FailedToUpdateLoginCode)?;
+        Ok(())
+    }
+
+    fn get_login_code(&self, email: &str) -> user::Result<i32> {
+        let result = user_schema::table
+            .filter(user_schema::email.eq(email))
+            .load::<User>(&mut self.get()?)
+            .map_err(user::UserModelError::FailedToGetLoginCode)?;
+
+        match result.as_slice() {
+            [] => Err(user::UserModelError::UserDoesNotExists),
+            [User {
+                login_code: Some(l),
+                ..
+            }] => Ok(l.clone()),
+            [_u] => Err(user::UserModelError::UserWithoutLoginCode),
+            _ => Err(user::UserModelError::MoreThanOneEmailError),
+        }
+    }
+
+    fn get_id_by_email(&self, email: &str) -> user::Result<Uuid> {
+        let result = user_schema::table
+            .filter(user_schema::email.eq(email))
+            .load::<User>(&mut self.get()?)
+            .map_err(user::UserModelError::FailedToGetIdByEmail)?;
+
+        match result.as_slice() {
+            [] => Err(user::UserModelError::UserDoesNotExists),
+            [u] => Ok(u.id),
+            _ => Err(user::UserModelError::MoreThanOneEmailError),
+        }
     }
 }

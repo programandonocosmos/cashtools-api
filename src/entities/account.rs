@@ -53,3 +53,37 @@ pub struct NewAccount {
     pub earning: Option<Earning>,
     pub is_available: bool,
 }
+
+// Model-related things
+
+#[derive(Debug)]
+pub enum AccountModelError {
+    FailedToGetConn(r2d2::Error),
+    FailedToGetAccount(diesel::result::Error),
+    AccountNotFound,
+    MultipleAccountWithSameId,
+    FailedToCreateAccount(diesel::result::Error),
+    FailedToDeleteAccount(Box<AccountModelError>),
+    FailedToUpdateAccount(diesel::result::Error),
+}
+
+impl From<r2d2::Error> for AccountModelError {
+    fn from(error: r2d2::Error) -> Self {
+        AccountModelError::FailedToGetConn(error)
+    }
+}
+
+pub type Result<T> = std::result::Result<T, AccountModelError>;
+
+pub trait AccountModel {
+    fn create_account(&self, user_id: Uuid, new_account: NewAccount) -> Result<Account>;
+    fn get_account(&self, id: &Uuid, user_id: &Uuid) -> Result<Account>;
+    fn get_accounts(&self, user_id: &Uuid) -> Result<Vec<Account>>;
+    fn delete_account(&self, id: &Uuid, user_id: &Uuid) -> Result<()>;
+    fn edit_account(
+        &self,
+        id: &Uuid,
+        user_id: &Uuid,
+        updated_account: UpdatedAccount,
+    ) -> Result<Account>;
+}

@@ -125,7 +125,7 @@ struct Account {
     in_trash: bool,
 }
 
-impl entities::user::UserIntegration {
+impl entities::integration::UserIntegration {
     fn to_graphql(&self) -> Integration {
         Integration {
             id: self.id,

@@ -54,50 +54,38 @@ impl Transaction {
     }
 }
 
-#[derive(Debug)]
-pub enum TransactionModelError {
-    FailedToGetConn(r2d2::Error),
-    FailedToCreateTransaction(diesel::result::Error),
-    FailedToListTransactions(diesel::result::Error),
-    FailedToDeleteTransaction(diesel::result::Error),
-}
-
-impl From<r2d2::Error> for TransactionModelError {
-    fn from(error: r2d2::Error) -> Self {
-        TransactionModelError::FailedToGetConn(error)
+impl transaction::TransactionModel for database::DbPool {
+    fn create_transaction(
+        &self,
+        user_id: &Uuid,
+        new_transaction: transaction::NewTransaction,
+    ) -> transaction::Result<transaction::Transaction> {
+        diesel::insert_into(transaction_schema::table)
+            .values(&new_transaction.to_model(user_id))
+            .get_result::<Transaction>(&mut self.get()?)
+            .map(|t| t.to_entity())
+            .map_err(transaction::TransactionModelError::FailedToCreateTransaction)
     }
-}
 
-pub type Result<T> = std::result::Result<T, TransactionModelError>;
+    fn list_user_transactions(
+        &self,
+        user_id: &Uuid,
+    ) -> transaction::Result<Vec<transaction::Transaction>> {
+        Ok(transaction_schema::table
+            .filter(transaction_schema::related_user.eq(user_id))
+            .load::<Transaction>(&mut self.get()?)
+            .map_err(transaction::TransactionModelError::FailedToListTransactions)?
+            .iter()
+            .map(|t| t.to_entity())
+            .collect())
+    }
 
-pub fn create_transaction(
-    conn: &database::DbPool,
-    user_id: &Uuid,
-    new_transaction: transaction::NewTransaction,
-) -> Result<transaction::Transaction> {
-    diesel::insert_into(transaction_schema::table)
-        .values(&new_transaction.to_model(user_id))
-        .get_result::<Transaction>(&mut conn.get()?)
-        .map(|t| t.to_entity())
-        .map_err(TransactionModelError::FailedToCreateTransaction)
-}
-
-pub fn list_user_transactions(
-    conn: &database::DbPool,
-    user_id: &Uuid,
-) -> Result<Vec<transaction::Transaction>> {
-    Ok(transaction_schema::table
-        .filter(transaction_schema::related_user.eq(user_id))
-        .load::<Transaction>(&mut conn.get()?)
-        .map_err(TransactionModelError::FailedToListTransactions)?
-        .iter()
-        .map(|t| t.to_entity())
-        .collect())
-}
-
-pub fn delete_transaction_by_user_id(conn: &database::DbPool, user_id: &Uuid) -> Result<()> {
-    diesel::delete(transaction_schema::table.filter(transaction_schema::related_user.eq(user_id)))
-        .execute(&mut conn.get()?)
-        .map_err(TransactionModelError::FailedToDeleteTransaction)?;
-    Ok(())
+    fn delete_transaction_by_user_id(&self, user_id: &Uuid) -> transaction::Result<()> {
+        diesel::delete(
+            transaction_schema::table.filter(transaction_schema::related_user.eq(user_id)),
+        )
+        .execute(&mut self.get()?)
+        .map_err(transaction::TransactionModelError::FailedToDeleteTransaction)?;
+        Ok(())
+    }
 }

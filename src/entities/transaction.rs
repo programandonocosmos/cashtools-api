@@ -46,3 +46,31 @@ impl Transaction {
         }
     }
 }
+
+// Model-related things
+
+#[derive(Debug)]
+pub enum TransactionModelError {
+    FailedToGetConn(r2d2::Error),
+    FailedToCreateTransaction(diesel::result::Error),
+    FailedToListTransactions(diesel::result::Error),
+    FailedToDeleteTransaction(diesel::result::Error),
+}
+
+impl From<r2d2::Error> for TransactionModelError {
+    fn from(error: r2d2::Error) -> Self {
+        TransactionModelError::FailedToGetConn(error)
+    }
+}
+
+pub type Result<T> = std::result::Result<T, TransactionModelError>;
+
+pub trait TransactionModel {
+    fn create_transaction(
+        &self,
+        user_id: &Uuid,
+        new_transaction: NewTransaction,
+    ) -> Result<Transaction>;
+    fn list_user_transactions(&self, user_id: &Uuid) -> Result<Vec<Transaction>>;
+    fn delete_transaction_by_user_id(&self, user_id: &Uuid) -> Result<()>;
+}

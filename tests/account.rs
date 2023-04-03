@@ -1,5 +1,4 @@
-use cashtools::entities::account::{Earning, EarningIndex, NewAccount};
-use cashtools::models::account;
+use cashtools::entities::account::{AccountModel, Earning, EarningIndex, NewAccount};
 mod common;
 use env_logger;
 use uuid::Uuid;
@@ -17,8 +16,8 @@ fn create_and_delete_account() {
         earning: None,
         is_available: false,
     };
-    let account = account::create_account(&conn, user_id, new_account).unwrap();
-    account::delete_account(&conn, &account.id, &user_id).unwrap();
+    let account = conn.create_account(user_id, new_account).unwrap();
+    conn.delete_account(&account.id, &user_id).unwrap();
 }
 
 #[test]
@@ -38,6 +37,6 @@ fn create_and_delete_account_with_earning() {
         }),
         is_available: false,
     };
-    let account = account::create_account(&conn, user_id, new_account).unwrap();
-    account::delete_account(&conn, &account.id, &user_id).unwrap();
+    let account = conn.create_account(user_id, new_account).unwrap();
+    conn.delete_account(&account.id, &user_id).unwrap();
 }

@@ -1,4 +1,4 @@
 pub mod account;
+pub mod integration;
 pub mod transaction;
 pub mod user;
-pub mod user_integration;

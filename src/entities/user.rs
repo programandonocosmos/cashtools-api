@@ -1,6 +1,7 @@
 use chrono::NaiveDateTime;
-
 use uuid::Uuid;
+
+use crate::entities::integration::UserIntegration;
 
 // User that will be returned when you try to get user information
 #[derive(Clone)]
@@ -54,17 +55,40 @@ pub struct NewUser {
     pub email: String,
 }
 
-#[derive(Clone)]
-pub struct UserIntegration {
-    pub id: Uuid,
-    pub related_user: Uuid,
-    pub name: String,
-    pub time: NaiveDateTime,
+// Model-related things
+
+#[derive(Debug)]
+pub enum UserModelError {
+    FailedToGetConn(r2d2::Error),
+    FailedToCreateUser(diesel::result::Error),
+    FailedToDeleteUser(diesel::result::Error),
+    FailedToGetUserById(diesel::result::Error),
+    FailedToCheckAvailability(diesel::result::Error),
+    FailedToGetLoginCode(diesel::result::Error),
+    FailedToGetIdByEmail(diesel::result::Error),
+    FailedToUpdateLoginCode(diesel::result::Error),
+    UserAlreadyExists,
+    UserDoesNotExists,
+    UserWithoutLoginCode,
+    MoreThanOneEmailError,
+    MoreThanOneIdError,
 }
 
-#[derive(Clone)]
-pub struct NewUserIntegration {
-    pub related_user: Uuid,
-    pub name: String,
-    pub time: NaiveDateTime,
+impl From<r2d2::Error> for UserModelError {
+    fn from(error: r2d2::Error) -> Self {
+        UserModelError::FailedToGetConn(error)
+    }
+}
+
+pub type Result<T> = std::result::Result<T, UserModelError>;
+
+pub trait UserModel {
+    fn create_user(&self, user: NewUser) -> Result<User>;
+    fn delete_user(&self, id: &Uuid) -> Result<User>;
+    fn get_user(&self, id: Uuid) -> Result<User>;
+    fn check_if_username_available(&self, username: &str) -> Result<bool>;
+    fn check_if_email_available(&self, email: &str) -> Result<bool>;
+    fn refresh_login_code(&self, email: &str, login_code: i32, time: NaiveDateTime) -> Result<()>;
+    fn get_login_code(&self, email: &str) -> Result<i32>;
+    fn get_id_by_email(&self, email: &str) -> Result<Uuid>;
 }

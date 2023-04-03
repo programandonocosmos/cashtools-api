@@ -4,16 +4,16 @@ use chrono::Utc;
 use uuid::Uuid;
 
 use crate::{
-    database, entities::transaction, jwt, models::account as account_model,
-    models::transaction as transaction_model, models::user as user_model,
+    entities::{account, transaction, user},
+    jwt,
     utils::opt_result_of_result_opt,
 };
 
 #[derive(Debug)]
 pub enum TransactionServiceError {
-    TransactionModelFailed(transaction_model::TransactionModelError),
-    UserModelFailed(user_model::UserModelError),
-    AccountModelFailed(account_model::AccountModelError),
+    TransactionModelFailed(transaction::TransactionModelError),
+    UserModelFailed(user::UserModelError),
+    AccountModelFailed(account::AccountModelError),
     JwtError(jwt::JwtError),
 }
 
@@ -23,20 +23,20 @@ impl fmt::Display for TransactionServiceError {
     }
 }
 
-impl From<transaction_model::TransactionModelError> for TransactionServiceError {
-    fn from(error: transaction_model::TransactionModelError) -> Self {
+impl From<transaction::TransactionModelError> for TransactionServiceError {
+    fn from(error: transaction::TransactionModelError) -> Self {
         TransactionServiceError::TransactionModelFailed(error)
     }
 }
 
-impl From<user_model::UserModelError> for TransactionServiceError {
-    fn from(error: user_model::UserModelError) -> Self {
+impl From<user::UserModelError> for TransactionServiceError {
+    fn from(error: user::UserModelError) -> Self {
         TransactionServiceError::UserModelFailed(error)
     }
 }
 
-impl From<account_model::AccountModelError> for TransactionServiceError {
-    fn from(error: account_model::AccountModelError) -> Self {
+impl From<account::AccountModelError> for TransactionServiceError {
+    fn from(error: account::AccountModelError) -> Self {
         TransactionServiceError::AccountModelFailed(error)
     }
 }
@@ -49,42 +49,42 @@ impl From<jwt::JwtError> for TransactionServiceError {
 
 pub type Result<T> = std::result::Result<T, TransactionServiceError>;
 
-fn fill_name(
-    conn: &database::DbPool,
+fn fill_name<T: account::AccountModel>(
+    database: &T,
     user_id: &Uuid,
     transaction: &transaction::Transaction,
 ) -> Result<transaction::TransactionWithNames> {
     let entry_account = transaction
         .entry_account_code
-        .map(|code| account_model::get_account(conn, &code, user_id));
+        .map(|code| database.get_account(&code, user_id));
     let exit_account = transaction
         .exit_account_code
-        .map(|code| account_model::get_account(conn, &code, user_id));
+        .map(|code| database.get_account(&code, user_id));
     let entry_account_name = opt_result_of_result_opt(entry_account)?.map(|x| x.name);
     let exit_account_name = opt_result_of_result_opt(exit_account)?.map(|x| x.name);
     Ok(transaction.with_names(entry_account_name, exit_account_name))
 }
 
-pub fn auth_and_create_transaction(
-    conn: &database::DbPool,
+pub fn auth_and_create_transaction<T: transaction::TransactionModel + account::AccountModel>(
+    database: &T,
     token: &str,
     jwt_secret: &str,
     new_transaction: transaction::NewTransaction,
 ) -> Result<transaction::TransactionWithNames> {
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
-    let created_transaction = transaction_model::create_transaction(conn, &id, new_transaction)?;
-    fill_name(conn, &id, &created_transaction)
+    let created_transaction = database.create_transaction(&id, new_transaction)?;
+    fill_name(database, &id, &created_transaction)
 }
 
-pub fn auth_and_list_user_transactions(
-    conn: &database::DbPool,
+pub fn auth_and_list_user_transactions<T: transaction::TransactionModel + account::AccountModel>(
+    database: &T,
     token: &str,
     jwt_secret: &str,
 ) -> Result<Vec<transaction::TransactionWithNames>> {
     let id = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
-    let transactions = transaction_model::list_user_transactions(conn, &id)?;
+    let transactions = database.list_user_transactions(&id)?;
     transactions
         .into_iter()
-        .map(|t| fill_name(conn, &id, &t))
+        .map(|t| fill_name(database, &id, &t))
         .collect()
 }

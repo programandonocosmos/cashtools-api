@@ -16,8 +16,11 @@ fn create_and_delete_account() {
         earning: None,
         is_available: false,
     };
-    let account = conn.create_account(user_id, new_account).unwrap();
-    conn.delete_account(&account.id, &user_id).unwrap();
+    let account = conn
+        .create_account(user_id, new_account)
+        .expect(common::DEFAULT_MESSAGE);
+    conn.delete_account(&account.id, &user_id)
+        .expect(common::DEFAULT_MESSAGE);
 }
 
 #[test]
@@ -37,6 +40,9 @@ fn create_and_delete_account_with_earning() {
         }),
         is_available: false,
     };
-    let account = conn.create_account(user_id, new_account).unwrap();
-    conn.delete_account(&account.id, &user_id).unwrap();
+    let account = conn
+        .create_account(user_id, new_account)
+        .expect(common::DEFAULT_MESSAGE);
+    conn.delete_account(&account.id, &user_id)
+        .expect(common::DEFAULT_MESSAGE);
 }

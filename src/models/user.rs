@@ -54,17 +54,11 @@ impl User {
 
 impl user::UserModel for database::DbPool {
     fn create_user(&self, user: user::NewUser) -> user::Result<user::User> {
-        let username_is_available = self.check_if_username_available(&user.username)?;
-        let email_is_available = self.check_if_email_available(&user.email)?;
-
-        match (username_is_available, email_is_available) {
-            (true, true) => diesel::insert_into(user_schema::table)
-                .values(&user.to_model())
-                .get_result::<User>(&mut self.get()?)
-                .map(|u| u.to_entity())
-                .map_err(user::UserModelError::FailedToCreateUser),
-            _ => Err(user::UserModelError::UserAlreadyExists),
-        }
+        diesel::insert_into(user_schema::table)
+            .values(&user.to_model())
+            .get_result::<User>(&mut self.get()?)
+            .map(|u| u.to_entity())
+            .map_err(user::UserModelError::FailedToCreateUser)
     }
 
     fn delete_user(&self, id: &Uuid) -> user::Result<user::User> {

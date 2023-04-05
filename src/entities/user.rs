@@ -83,7 +83,6 @@ pub enum UserModelError {
     FailedToGetLoginCode(diesel::result::Error),
     FailedToGetIdByEmail(diesel::result::Error),
     FailedToUpdateLoginCode(diesel::result::Error),
-    UserAlreadyExists,
     UserDoesNotExists,
     UserWithoutLoginCode,
     MoreThanOneEmailError,

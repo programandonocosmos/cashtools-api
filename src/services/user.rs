@@ -18,6 +18,7 @@ pub enum UserServiceError {
     UserIntegrationModelFailed(integration::IntegrationModelError),
     JwtError(jwt::JwtError),
     LoginCodeNotMatching,
+    UserAlreadyExists,
 }
 
 impl fmt::Display for UserServiceError {
@@ -58,14 +59,22 @@ pub fn create_user<T: user::UserModel>(
     name: &str,
     email: &str,
 ) -> Result<user::UserWithIntegrations> {
+    let username_is_available = database.check_if_username_available(username)?;
+    let email_is_available = database.check_if_email_available(email)?;
+
     let new_user = user::NewUser {
         name: name.to_string(),
         username: username.to_string(),
         email: email.to_string(),
     };
-    let user = database
+
+    let user = match (username_is_available, email_is_available) {
+        (true, true) => Ok(database
         .create_user(new_user)?
-        .with_integrations(Vec::new());
+            .with_integrations(Vec::new())),
+        _ => Err(UserServiceError::UserAlreadyExists),
+    }?;
+
     refresh_login_code(database, email)?;
 
     Ok(user)

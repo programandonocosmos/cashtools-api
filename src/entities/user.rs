@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use uuid::Uuid;
 
-use crate::entities::integration::UserIntegration;
+use crate::{entities::integration::UserIntegration, utils::do_vecs_match};
 
 // User that will be returned when you try to get user information
 #[derive(Clone)]
@@ -17,6 +17,7 @@ pub struct User {
     pub payday: Option<i32>,
 }
 
+#[derive(Debug)]
 pub struct UserWithIntegrations {
     pub id: Uuid,
     pub name: String,
@@ -28,6 +29,21 @@ pub struct UserWithIntegrations {
     pub is_registered: bool,
     pub payday: Option<i32>,
     pub integrations: Vec<UserIntegration>,
+}
+
+impl PartialEq for UserWithIntegrations {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.name == other.name
+            && self.username == other.username
+            && self.register_date == other.register_date
+            && self.email == other.email
+            && self.last_code_gen_request == other.last_code_gen_request
+            && self.login_code == other.login_code
+            && self.is_registered == other.is_registered
+            && self.payday == other.payday
+            && do_vecs_match(&self.integrations, &other.integrations)
+    }
 }
 
 impl User {

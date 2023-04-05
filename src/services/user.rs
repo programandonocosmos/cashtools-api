@@ -70,7 +70,7 @@ pub fn create_user<T: user::UserModel>(
 
     let user = match (username_is_available, email_is_available) {
         (true, true) => Ok(database
-        .create_user(new_user)?
+            .create_user(new_user)?
             .with_integrations(Vec::new())),
         _ => Err(UserServiceError::UserAlreadyExists),
     }?;
@@ -186,4 +186,122 @@ pub fn auth_and_delete_integration<T: user::UserModel + integration::Integration
 ) -> Result<integration::UserIntegration> {
     let _ = jwt::verify_token(Utc::now().naive_utc(), token, jwt_secret)?;
     Ok(database.delete_integration(&id)?)
+}
+
+#[cfg(test)]
+mod user_tests {
+
+    use super::*;
+
+    use crate::entities::user;
+
+    struct T {}
+
+    impl user::UserModel for T {
+        fn create_user(&self, user: user::NewUser) -> user::Result<user::User> {
+            Ok(user::User {
+                id: Uuid::from_u128(160141200314647599499076565412518613020),
+                name: user.name,
+                username: user.username,
+                register_date: None,
+                email: user.email,
+                last_code_gen_request: None,
+                login_code: None,
+                is_registered: true,
+                payday: None,
+            })
+        }
+        fn delete_user(&self, id: &Uuid) -> user::Result<user::User> {
+            Ok(user::User {
+                id: Uuid::from_u128(160141200314647599499076565412518613020),
+                name: "Usuário 1".to_string(),
+                username: "usuario1".to_string(),
+                register_date: None,
+                email: "usuario1@gmail.com".to_string(),
+                last_code_gen_request: None,
+                login_code: None,
+                is_registered: true,
+                payday: None,
+            })
+        }
+        fn get_user(&self, id: Uuid) -> user::Result<user::User> {
+            Ok(user::User {
+                id: Uuid::from_u128(160141200314647599499076565412518613020),
+                name: "Usuário 1".to_string(),
+                username: "usuario1".to_string(),
+                register_date: None,
+                email: "usuario1@gmail.com".to_string(),
+                last_code_gen_request: None,
+                login_code: None,
+                is_registered: true,
+                payday: None,
+            })
+        }
+        fn check_if_username_available(&self, username: &str) -> user::Result<bool> {
+            match username {
+                "usuario1" => Ok(true),
+                "usuario2" => Ok(true),
+                "usuario3" => Ok(false),
+                "usuario4" => Ok(false),
+                _ => Ok(true),
+            }
+        }
+        fn check_if_email_available(&self, email: &str) -> user::Result<bool> {
+            match email {
+                "usuario1@gmail.com" => Ok(true),
+                "usuario2@gmail.com" => Ok(false),
+                "usuario3@gmail.com" => Ok(true),
+                "usuario4@gmail.com" => Ok(false),
+                _ => Ok(true),
+            }
+        }
+        fn refresh_login_code(
+            &self,
+            email: &str,
+            login_code: i32,
+            time: NaiveDateTime,
+        ) -> user::Result<()> {
+            Ok(())
+        }
+        fn get_login_code(&self, email: &str) -> user::Result<i32> {
+            Ok(0)
+        }
+        fn get_id_by_email(&self, email: &str) -> user::Result<Uuid> {
+            Ok(Uuid::from_u128(160141200314647599499076565412518613020))
+        }
+    }
+
+    #[test]
+    fn try_create_new_user() -> Result<()> {
+        let created_user = create_user(&T {}, "usuario1", "Usuário 1", "usuario1@gmail.com")?;
+        let expected_user = user::UserWithIntegrations {
+            id: Uuid::from_u128(160141200314647599499076565412518613020),
+            name: "Usuário 1".to_string(),
+            username: "usuario1".to_string(),
+            register_date: None,
+            email: "usuario1@gmail.com".to_string(),
+            last_code_gen_request: None,
+            login_code: None,
+            is_registered: true,
+            payday: None,
+            integrations: Vec::new(),
+        };
+        assert_eq!(created_user, expected_user);
+        Ok(())
+    }
+
+    #[test]
+    fn try_create_user_with_taken_email() {
+        assert!(create_user(&T {}, "usuario2", "Usuário 2", "usuario2@gmail.com").is_err());
+    }
+
+    #[test]
+    fn try_create_user_with_taken_username() {
+        assert!(create_user(&T {}, "usuario3", "Usuário 3", "usuario3@gmail.com").is_err());
+    }
+
+    #[test]
+    fn try_create_user_with_taken_email_username() {
+        assert!(create_user(&T {}, "usuario4", "Usuário 4", "usuario4@gmail.com").is_err());
+    }
 }

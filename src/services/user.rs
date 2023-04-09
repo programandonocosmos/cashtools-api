@@ -239,20 +239,14 @@ mod user_tests {
         }
         fn check_if_username_available(&self, username: &str) -> user::Result<bool> {
             match username {
-                "usuario1" => Ok(true),
-                "usuario2" => Ok(true),
-                "usuario3" => Ok(false),
-                "usuario4" => Ok(false),
-                _ => Ok(true),
+                "usuario3" | "usuario4" => Ok(false),
+                "usuario1" | "usuario2" | _ => Ok(true),
             }
         }
         fn check_if_email_available(&self, email: &str) -> user::Result<bool> {
             match email {
-                "usuario1@gmail.com" => Ok(true),
-                "usuario2@gmail.com" => Ok(false),
-                "usuario3@gmail.com" => Ok(true),
-                "usuario4@gmail.com" => Ok(false),
-                _ => Ok(true),
+                "usuario2@gmail.com" | "usuario4@gmail.com" => Ok(false),
+                "usuario1@gmail.com" | "usuario3@gmail.com" | _ => Ok(true),
             }
         }
         fn refresh_login_code(

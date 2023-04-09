@@ -1,8 +1,9 @@
-# fly.toml file generated for mymoney on 2022-09-04T16:37:50-03:00
+# fly.toml file generated for cashtools on 2023-04-09T17:50:52-03:00
 
-app = "mymoney"
+app = "cashtools"
 kill_signal = "SIGINT"
 kill_timeout = 5
+primary_region = "gru"
 processes = []
 
 [env]

@@ -193,9 +193,65 @@ mod user_tests {
 
     use super::*;
 
-    use crate::entities::user;
-
     struct T {}
+
+    impl integration::IntegrationModel for T {
+        fn create_integration(
+            &self,
+            t: integration::NewUserIntegration,
+        ) -> integration::Result<integration::UserIntegration> {
+            Err(
+                integration::IntegrationModelError::FailedToCreateIntegration(
+                    diesel::result::Error::NotFound,
+                ),
+            )
+        }
+        fn list_user_integrations(
+            &self,
+            user_id: &Uuid,
+        ) -> integration::Result<Vec<integration::UserIntegration>> {
+            Ok(Vec::new())
+        }
+        fn delete_integration_by_user_id(
+            &self,
+            user_id: &Uuid,
+        ) -> integration::Result<Vec<integration::UserIntegration>> {
+            Ok(Vec::new())
+        }
+        fn delete_integration(
+            &self,
+            id: &Uuid,
+        ) -> integration::Result<integration::UserIntegration> {
+            Err(
+                integration::IntegrationModelError::FailedToDeleteIntegration(
+                    diesel::result::Error::NotFound,
+                ),
+            )
+        }
+    }
+
+    impl transaction::TransactionModel for T {
+        fn create_transaction(
+            &self,
+            user_id: &Uuid,
+            new_transaction: transaction::NewTransaction,
+        ) -> transaction::Result<transaction::Transaction> {
+            Err(
+                transaction::TransactionModelError::FailedToCreateTransaction(
+                    diesel::result::Error::NotFound,
+                ),
+            )
+        }
+        fn list_user_transactions(
+            &self,
+            user_id: &Uuid,
+        ) -> transaction::Result<Vec<transaction::Transaction>> {
+            Ok(Vec::new())
+        }
+        fn delete_transaction_by_user_id(&self, user_id: &Uuid) -> transaction::Result<()> {
+            Ok(())
+        }
+    }
 
     impl user::UserModel for T {
         fn create_user(&self, user: user::NewUser) -> user::Result<user::User> {
@@ -213,7 +269,7 @@ mod user_tests {
         }
         fn delete_user(&self, id: &Uuid) -> user::Result<user::User> {
             Ok(user::User {
-                id: Uuid::from_u128(160141200314647599499076565412518613020),
+                id: id.clone(),
                 name: "Usuário 1".to_string(),
                 username: "usuario1".to_string(),
                 register_date: None,
@@ -297,5 +353,25 @@ mod user_tests {
     #[test]
     fn try_create_user_with_taken_email_username() {
         assert!(create_user(&T {}, "usuario4", "Usuário 4", "usuario4@gmail.com").is_err());
+    }
+
+    #[test]
+    fn try_delete_user() -> Result<()> {
+        let user_id = Uuid::from_u128(160141200314647599499076565412518613020);
+        let created_user = delete_user(&T {}, user_id)?;
+        let expected_user = user::UserWithIntegrations {
+            id: user_id,
+            name: "Usuário 1".to_string(),
+            username: "usuario1".to_string(),
+            register_date: None,
+            email: "usuario1@gmail.com".to_string(),
+            last_code_gen_request: None,
+            login_code: None,
+            is_registered: true,
+            payday: None,
+            integrations: Vec::new(),
+        };
+        assert_eq!(created_user, expected_user);
+        Ok(())
     }
 }

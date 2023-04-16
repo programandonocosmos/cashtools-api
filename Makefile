@@ -9,6 +9,9 @@ run-debug:
 test:
 	@RUST_LOG=debug DATABASE_URL=$(DATABASE_URL) cargo test
 
+test-no-integ:
+	cargo test --lib
+
 proxy:
 	@flyctl proxy 5432 -a $(DB_APPNAME)
 

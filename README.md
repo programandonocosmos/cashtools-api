@@ -2,6 +2,14 @@
 
 This is the backend of a mobile app called CashTools. It exists to manage personal money. You can follow the app development on the [twitch channel](https://www.twitch.tv/programandonocosmos). Check the [mobile app repository](https://github.com/programandonocosmos/cashtools-app) too. It's written in Rust mainly using Rocket, Juniper, Diesel and Postgres.
 
+## Dependencies
+
+Unfortunately, you will need to install `libpq-dev` and `openssl-dev` manually to run the project. To do it run:
+
+```bash
+sudo apt install libpq-dev openssl-dev
+```
+
 ## How to run locally + local database
 
 Start a Postgres instance locally and add the database url in a file called `.env.local`. It should look like this:

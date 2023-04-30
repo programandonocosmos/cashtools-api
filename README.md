@@ -18,6 +18,7 @@ Start a Postgres instance locally and add the database url in a file called `.en
 DATABASE_URL=...
 JWT_SECRET=...
 ENV=DEV
+API_PORT=8080
 ```
 
 To run all migrations in your database, run:

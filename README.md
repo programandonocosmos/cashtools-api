@@ -1,6 +1,6 @@
 # CashTools API
 
-This is the backend of a mobile app called CashTools. Check the [mobile app repository](https://github.com/programandonocosmos/cashtools-app) too. It's written in Rust mainly using Rocket, Juniper, Diesel and Postgres.
+This is the backend of a mobile app called CashTools. It exists to manage personal money. You can follow the app development on the [twitch channel](https://www.twitch.tv/programandonocosmos). Check the [mobile app repository](https://github.com/programandonocosmos/cashtools-app) too. It's written in Rust mainly using Rocket, Juniper, Diesel and Postgres.
 
 ## How to run locally + local database
 

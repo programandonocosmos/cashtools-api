@@ -1,7 +1,7 @@
 include .env.local
 
 run:
-	@DATABASE_URL=$(DATABASE_URL) JWT_SECRET=$(JWT_SECRET) ENV=$(ENV) cargo run
+	@API_PORT=$(API_PORT) DATABASE_URL=$(DATABASE_URL) JWT_SECRET=$(JWT_SECRET) ENV=$(ENV) cargo run
 
 run-debug:
 	@RUST_LOG=debug DATABASE_URL=$(DATABASE_URL) JWT_SECRET=$(JWT_SECRET) ENV=$(ENV) cargo run

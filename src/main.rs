@@ -48,6 +48,8 @@ async fn rocket() -> _ {
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+    let api_port = env::var("API_PORT").expect("API_PORT must be set").parse::<u16>().expect("API_PORT must be a number");
+
     let env = match env::var("ENV").expect("ENV must be set").as_str() {
         "DEV" => entities::Env::DEV,
         "PROD" => entities::Env::PROD,
@@ -57,7 +59,7 @@ async fn rocket() -> _ {
     let pool = database::establish_pooled_connection(database_url);
 
     let figment = rocket::Config::figment()
-        .merge(("port", 8080))
+        .merge(("port", api_port))
         .merge(("address", "0.0.0.0"));
 
     let context = graphql_resolvers::Context {

@@ -193,9 +193,9 @@ mod user_tests {
 
     use super::*;
 
-    struct T {}
+    struct TestModel {}
 
-    impl integration::IntegrationModel for T {
+    impl integration::IntegrationModel for TestModel {
         fn create_integration(
             &self,
             t: integration::NewUserIntegration,
@@ -230,7 +230,7 @@ mod user_tests {
         }
     }
 
-    impl transaction::TransactionModel for T {
+    impl transaction::TransactionModel for TestModel {
         fn create_transaction(
             &self,
             user_id: &Uuid,
@@ -253,7 +253,7 @@ mod user_tests {
         }
     }
 
-    impl user::UserModel for T {
+    impl user::UserModel for TestModel {
         fn create_user(&self, user: user::NewUser) -> user::Result<user::User> {
             Ok(user::User {
                 id: Uuid::from_u128(160141200314647599499076565412518613020),
@@ -323,7 +323,8 @@ mod user_tests {
 
     #[test]
     fn try_create_new_user() -> Result<()> {
-        let created_user = create_user(&T {}, "usuario1", "Usuário 1", "usuario1@gmail.com")?;
+        let created_user =
+            create_user(&TestModel {}, "usuario1", "Usuário 1", "usuario1@gmail.com")?;
         let expected_user = user::UserWithIntegrations {
             id: Uuid::from_u128(160141200314647599499076565412518613020),
             name: "Usuário 1".to_string(),
@@ -342,23 +343,23 @@ mod user_tests {
 
     #[test]
     fn try_create_user_with_taken_email() {
-        assert!(create_user(&T {}, "usuario2", "Usuário 2", "usuario2@gmail.com").is_err());
+        assert!(create_user(&TestModel {}, "usuario2", "Usuário 2", "usuario2@gmail.com").is_err());
     }
 
     #[test]
     fn try_create_user_with_taken_username() {
-        assert!(create_user(&T {}, "usuario3", "Usuário 3", "usuario3@gmail.com").is_err());
+        assert!(create_user(&TestModel {}, "usuario3", "Usuário 3", "usuario3@gmail.com").is_err());
     }
 
     #[test]
     fn try_create_user_with_taken_email_username() {
-        assert!(create_user(&T {}, "usuario4", "Usuário 4", "usuario4@gmail.com").is_err());
+        assert!(create_user(&TestModel {}, "usuario4", "Usuário 4", "usuario4@gmail.com").is_err());
     }
 
     #[test]
     fn try_delete_user() -> Result<()> {
         let user_id = Uuid::from_u128(160141200314647599499076565412518613020);
-        let created_user = delete_user(&T {}, user_id)?;
+        let created_user = delete_user(&TestModel {}, user_id)?;
         let expected_user = user::UserWithIntegrations {
             id: user_id,
             name: "Usuário 1".to_string(),
@@ -378,7 +379,7 @@ mod user_tests {
     #[test]
     fn try_get_user() -> Result<()> {
         let user_id = Uuid::from_u128(160141200314647599499076565412518613020);
-        let created_user = get_user(&T {}, user_id)?;
+        let created_user = get_user(&TestModel {}, user_id)?;
         let expected_user = user::UserWithIntegrations {
             id: user_id,
             name: "Usuário 1".to_string(),
@@ -398,7 +399,7 @@ mod user_tests {
     #[test]
     fn try_validate_and_generate_token() -> Result<()> {
         assert!(validate_and_generate_token(
-            &T {},
+            &TestModel {},
             "usuario1".to_string(),
             123123,
             "XXXXXXXXXXXXXXX",
@@ -411,7 +412,7 @@ mod user_tests {
     #[test]
     fn try_validate_and_generate_token_with_wrong_code() -> Result<()> {
         assert!(validate_and_generate_token(
-            &T {},
+            &TestModel {},
             "usuario1".to_string(),
             321321,
             "XXXXXXXXXXXXXXX",

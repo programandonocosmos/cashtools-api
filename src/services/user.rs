@@ -314,7 +314,7 @@ mod user_tests {
             Ok(())
         }
         fn get_login_code(&self, email: &str) -> user::Result<i32> {
-            Ok(0)
+            Ok(123123)
         }
         fn get_id_by_email(&self, email: &str) -> user::Result<Uuid> {
             Ok(Uuid::from_u128(160141200314647599499076565412518613020))
@@ -372,6 +372,52 @@ mod user_tests {
             integrations: Vec::new(),
         };
         assert_eq!(created_user, expected_user);
+        Ok(())
+    }
+
+    #[test]
+    fn try_get_user() -> Result<()> {
+        let user_id = Uuid::from_u128(160141200314647599499076565412518613020);
+        let created_user = get_user(&T {}, user_id)?;
+        let expected_user = user::UserWithIntegrations {
+            id: user_id,
+            name: "Usuário 1".to_string(),
+            username: "usuario1".to_string(),
+            register_date: None,
+            email: "usuario1@gmail.com".to_string(),
+            last_code_gen_request: None,
+            login_code: None,
+            is_registered: true,
+            payday: None,
+            integrations: Vec::new(),
+        };
+        assert_eq!(created_user, expected_user);
+        Ok(())
+    }
+
+    #[test]
+    fn try_validate_and_generate_token() -> Result<()> {
+        assert!(validate_and_generate_token(
+            &T {},
+            "usuario1".to_string(),
+            123123,
+            "XXXXXXXXXXXXXXX",
+            &Env::PROD,
+        )
+        .is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn try_validate_and_generate_token_with_wrong_code() -> Result<()> {
+        assert!(validate_and_generate_token(
+            &T {},
+            "usuario1".to_string(),
+            321321,
+            "XXXXXXXXXXXXXXX",
+            &Env::PROD,
+        )
+        .is_err());
         Ok(())
     }
 }

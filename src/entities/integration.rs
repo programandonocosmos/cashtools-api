@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use uuid::Uuid;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct UserIntegration {
     pub id: Uuid,
     pub related_user: Uuid,
